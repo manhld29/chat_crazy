@@ -5,6 +5,17 @@ import * as https from "https";
 import { URL } from "url";
 import { LLMRequest, LLMUsage } from "./llm.types";
 
+export const DEFAULT_FREE_MODEL_POOL = [
+  "llama-3.3-70b-versatile",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemini-2.0-flash-exp:free",
+  "deepseek/deepseek-chat:free",
+  "deepseek/deepseek-r1:free",
+  "qwen/qwen-2.5-coder-32b-instruct:free",
+  "mistralai/mistral-7b-instruct:free",
+  "llama-3.1-8b-instant",
+] as const;
+
 export const OPENROUTER_FREE_MODELS = [
   {
     id: "meta-llama/llama-3.3-70b-instruct:free",
@@ -94,21 +105,58 @@ export class GroqLlmService {
   }
 
   async createCompletion(req: LLMRequest): Promise<any> {
+    const candidateModels = [
+      req.model,
+      ...DEFAULT_FREE_MODEL_POOL.filter((m) => m !== req.model),
+    ];
+
+    let lastError: Error | null = null;
+
+    for (const candidateModel of candidateModels) {
+      const provider = this.getProviderConfig(candidateModel);
+      if (!provider.apiKey) {
+        continue;
+      }
+
+      try {
+        const res = await this.executeSingleCompletionAttempt({
+          ...req,
+          model: candidateModel,
+        });
+        if (res && res.choices && res.choices.length > 0) {
+          return res;
+        }
+      } catch (err: any) {
+        lastError = err;
+        this.logger.warn(
+          `Free model '${candidateModel}' failed in createCompletion: ${err.message}. Auto-switching to next free model in pool...`,
+        );
+      }
+    }
+
+    // Mock fallback if all providers fail
+    this.logger.warn(
+      `All free models failed in createCompletion: ${lastError?.message}. Returning mock completion.`,
+    );
+    return {
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: `Mock mode completion for: ${req.messages[req.messages.length - 1]?.content || ""}`,
+          },
+        },
+      ],
+    };
+  }
+
+  private async executeSingleCompletionAttempt(req: LLMRequest): Promise<any> {
     const provider = this.getProviderConfig(req.model);
     const apiKey = provider.apiKey;
     const baseUrl = provider.baseUrl;
 
     if (!apiKey) {
-      return {
-        choices: [
-          {
-            message: {
-              role: "assistant",
-              content: `Mock mode completion for: ${req.messages[req.messages.length - 1]?.content || ""}`,
-            },
-          },
-        ],
-      };
+      throw new Error(`No API key configured for provider of ${req.model}`);
     }
 
     const endpoint = `${baseUrl}/chat/completions`;
@@ -129,7 +177,7 @@ export class GroqLlmService {
 
     const requestBody = JSON.stringify(bodyObj);
 
-    const maxRetries = 3;
+    const maxRetries = 1;
     let res: http.IncomingMessage | null = null;
     let resText = "";
 
@@ -163,9 +211,9 @@ export class GroqLlmService {
           errBody += chunk.toString();
         }
         this.logger.warn(
-          `LLM API 429 Rate limit hit in createCompletion (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${600 * (attempt + 1)}ms...`,
+          `LLM API 429 Rate limit hit in ${req.model} (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in 500ms...`,
         );
-        await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         continue;
       }
 
@@ -183,10 +231,73 @@ export class GroqLlmService {
       return JSON.parse(resText);
     }
 
-    throw new Error(`LLM API failed after ${maxRetries} retries.`);
+    throw new Error(`LLM API request for ${req.model} failed.`);
   }
 
   async *streamCompletion(
+    req: LLMRequest,
+  ): AsyncGenerator<{ delta: string; usage?: LLMUsage }, void, unknown> {
+    const candidateModels = [
+      req.model,
+      ...DEFAULT_FREE_MODEL_POOL.filter((m) => m !== req.model),
+    ];
+
+    let lastError: Error | null = null;
+    let streamSucceeded = false;
+
+    for (const candidateModel of candidateModels) {
+      const provider = this.getProviderConfig(candidateModel);
+      if (!provider.apiKey) {
+        continue;
+      }
+
+      try {
+        const streamGenerator = this.executeSingleStreamAttempt({
+          ...req,
+          model: candidateModel,
+        });
+
+        let hasYieldedAnyChunk = false;
+        for await (const chunk of streamGenerator) {
+          hasYieldedAnyChunk = true;
+          yield chunk;
+        }
+
+        if (hasYieldedAnyChunk) {
+          streamSucceeded = true;
+          return;
+        }
+      } catch (err: any) {
+        lastError = err;
+        this.logger.warn(
+          `Free model '${candidateModel}' failed: ${err.message}. Auto-switching to next free model in pool...`,
+        );
+      }
+    }
+
+    if (streamSucceeded) return;
+
+    // Fallback to mock mode if all API keys or models fail
+    this.logger.warn(
+      `All free models in pool failed. Error: ${lastError?.message}. Falling back to mock LLM response.`,
+    );
+    const mockText = `Đây là câu trả lời thử nghiệm từ hệ thống chatbot (Mock Mode). Bạn vừa nhắn: "${req.messages[req.messages.length - 1]?.content || ""}".`;
+    const words = mockText.split(" ");
+    for (const word of words) {
+      await new Promise((r) => setTimeout(r, 40));
+      yield { delta: word + " " };
+    }
+    yield {
+      delta: "",
+      usage: {
+        prompt_tokens: 15,
+        completion_tokens: words.length * 2,
+        total_tokens: 15 + words.length * 2,
+      },
+    };
+  }
+
+  private async *executeSingleStreamAttempt(
     req: LLMRequest,
   ): AsyncGenerator<{ delta: string; usage?: LLMUsage }, void, unknown> {
     const provider = this.getProviderConfig(req.model);
@@ -194,25 +305,7 @@ export class GroqLlmService {
     const baseUrl = provider.baseUrl;
 
     if (!apiKey) {
-      // Mock mode if no API key is provided
-      this.logger.warn(
-        "LLM API Key is not configured. Falling back to mock LLM responses.",
-      );
-      const mockText = `Đây là câu trả lời thử nghiệm từ hệ thống chatbot (Mock Mode). Bạn vừa nhắn: "${req.messages[req.messages.length - 1]?.content || ""}".`;
-      const words = mockText.split(" ");
-      for (const word of words) {
-        await new Promise((r) => setTimeout(r, 40));
-        yield { delta: word + " " };
-      }
-      yield {
-        delta: "",
-        usage: {
-          prompt_tokens: 15,
-          completion_tokens: words.length * 2,
-          total_tokens: 15 + words.length * 2,
-        },
-      };
-      return;
+      throw new Error(`No API key configured for provider of ${req.model}`);
     }
 
     const endpoint = `${baseUrl}/chat/completions`;
@@ -233,7 +326,7 @@ export class GroqLlmService {
 
     const requestBody = JSON.stringify(bodyObj);
 
-    const maxRetries = 3;
+    const maxRetries = 1;
     let res: http.IncomingMessage | null = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -268,9 +361,9 @@ export class GroqLlmService {
           errBody += chunk.toString();
         }
         this.logger.warn(
-          `LLM API 429 Rate limit hit in streamCompletion (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${600 * (attempt + 1)}ms...`,
+          `LLM API 429 Rate limit hit in ${req.model} (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in 500ms...`,
         );
-        await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         continue;
       }
 
