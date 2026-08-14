@@ -1,0 +1,11 @@
+# Backend Git Ignore
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+.vercel/

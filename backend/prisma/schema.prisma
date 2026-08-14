@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String?   @unique
+  username           String?   @unique
+  password_hash      String?
+  display_name       String?
+  is_guest           Boolean   @default(false)
+  is_active          Boolean   @default(true)
+  is_admin           Boolean   @default(false)
+  daily_message_limit Int?
+  created_at         DateTime  @default(now()) @db.Timestamptz
+  updated_at         DateTime  @default(now()) @updatedAt @db.Timestamptz
+  last_login_at      DateTime? @db.Timestamptz
+
+  refresh_sessions RefreshSession[]
+  conversations    Conversation[]
+  messages         Message[]
+  memories         UserMemory[]
+  usage_events     UsageEvent[]
+  feedback         Feedback[]
+
+  @@map("users")
+}
+
+model RefreshSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  user_id        String    @db.Uuid
+  token_hash     String    @unique
+  expires_at     DateTime  @db.Timestamptz
+  revoked_at     DateTime? @db.Timestamptz
+  replaced_by_id String?   @db.Uuid
+  user_agent     String?
+  ip_hash        String?
+  created_at     DateTime  @default(now()) @db.Timestamptz
+  updated_at     DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  user        User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  replaced_by RefreshSession? @relation("SessionReplacement", fields: [replaced_by_id], references: [id], onDelete: SetNull)
+  replacements RefreshSession[] @relation("SessionReplacement")
+
+  @@index([user_id])
+  @@map("refresh_sessions")
+}
+
+model Personality {
+  id                        String   @id @default(uuid()) @db.Uuid
+  code                      String   @unique
+  name                      String
+  description               String
+  system_prompt             String
+  default_temperature       Float    @default(0.7)
+  default_max_output_tokens Int      @default(1024)
+  is_system                 Boolean  @default(true)
+  created_at                DateTime @default(now()) @db.Timestamptz
+  updated_at                DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  conversations Conversation[]
+
+  @@map("personalities")
+}
+
+model Conversation {
+  id               String    @id @default(uuid()) @db.Uuid
+  user_id          String    @db.Uuid
+  personality_code String    @default("friendly")
+  title            String    @default("Cuộc trò chuyện mới")
+  summary          String?
+  summary_version  Int       @default(0)
+  last_message_at  DateTime  @default(now()) @db.Timestamptz
+  is_archived      Boolean   @default(false)
+  created_at       DateTime  @default(now()) @db.Timestamptz
+  updated_at       DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  personality Personality @relation(fields: [personality_code], references: [code], onDelete: Restrict)
+  messages    Message[]
+  usage_events UsageEvent[]
+
+  @@index([user_id])
+  @@index([user_id, last_message_at])
+  @@map("conversations")
+}
+
+model Message {
+  id                String    @id @default(uuid()) @db.Uuid
+  conversation_id   String    @db.Uuid
+  user_id           String    @db.Uuid
+  role              String
+  content           String
+  status            String    @default("completed")
+  model             String?
+  input_tokens      Int?
+  output_tokens     Int?
+  latency_ms        Int?
+  error_code        String?
+  client_message_id String?
+  parent_message_id String?   @db.Uuid
+  created_at        DateTime  @default(now()) @db.Timestamptz
+  updated_at        DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  feedback     Feedback[]
+  usage_events UsageEvent[]
+
+  @@index([conversation_id, created_at])
+  @@map("messages")
+}
+
+model UserMemory {
+  id                String   @id @default(uuid()) @db.Uuid
+  user_id           String   @db.Uuid
+  personality_code  String   @default("global")
+  memory_key        String
+  memory_value      String
+  category          String   @default("other")
+  confidence        Float    @default(1.0)
+  source_message_id String?  @db.Uuid
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now()) @db.Timestamptz
+  updated_at        DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("user_memories")
+}
+
+model UsageEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  user_id         String   @db.Uuid
+  conversation_id String?  @db.Uuid
+  message_id      String?  @db.Uuid
+  event_type      String
+  model           String?
+  input_tokens    Int      @default(0)
+  output_tokens   Int      @default(0)
+  status_code     Int      @default(200)
+  created_at      DateTime @default(now()) @db.Timestamptz
+
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
+  message      Message?      @relation(fields: [message_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id, created_at])
+  @@map("usage_events")
+}
+
+model Feedback {
+  id         String   @id @default(uuid()) @db.Uuid
+  message_id String   @db.Uuid
+  user_id    String   @db.Uuid
+  rating     Int
+  comment    String?
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  message Message @relation(fields: [message_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([message_id, user_id])
+  @@map("feedback")
+}

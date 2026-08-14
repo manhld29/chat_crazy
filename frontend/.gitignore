@@ -1,0 +1,11 @@
+# Frontend Git Ignore
+.env.local
+.env.*
+!.env.local.example
+
+node_modules/
+.next/
+out/
+tsconfig.tsbuildinfo
+*.log
+.vercel/

@@ -1,0 +1,74 @@
+services:
+  - type: web
+    runtime: docker
+    name: chat-crazy-backend
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/v1/health
+    preDeployCommand: npx prisma migrate deploy && npx prisma db seed
+    autoDeployTrigger: commit
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_NAME
+        value: Funny Chatbot API
+      - key: APP_VERSION
+        value: 0.1.0
+      - key: API_V1_PREFIX
+        value: /api/v1
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: DEFAULT_LLM_MODEL
+        sync: false
+      - key: CHEAP_LLM_MODEL
+        sync: false
+      - key: FALLBACK_LLM_MODEL
+        sync: false
+      - key: LLM_TIMEOUT_SECONDS
+        value: 30
+      - key: LLM_MAX_RETRIES
+        value: 1
+      - key: LLM_MAX_OUTPUT_TOKENS
+        value: 1024
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 30
+      - key: REFRESH_TOKEN_COOKIE_NAME
+        value: chat_crazy_refresh
+      - key: REFRESH_TOKEN_COOKIE_SAMESITE
+        value: none
+      - key: REFRESH_TOKEN_COOKIE_SECURE
+        value: true
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: METRICS_ENABLED
+        value: true
+      - key: METRICS_TOKEN
+        generateValue: true
+      - key: RATE_LIMIT_PER_MINUTE
+        value: 60
+      - key: MAX_INPUT_TOKENS
+        value: 4096
+      - key: MAX_OUTPUT_TOKENS
+        value: 1024
+      - key: CONVERSATION_WINDOW_MESSAGES
+        value: 20
+      - key: CONTEXT_TOKEN_BUDGET
+        value: 4096
+      - key: SUMMARY_MESSAGE_THRESHOLD
+        value: 40
+      - key: SUMMARY_TOKEN_THRESHOLD
+        value: 3000
