@@ -21,6 +21,10 @@ describe("AdminService", () => {
     usageEvent: {
       findMany: jest.fn(),
     },
+    systemSetting: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+    },
   };
 
   const mockAuthService = {
@@ -69,16 +73,17 @@ describe("AdminService", () => {
   });
 
   describe("getAdminConfig", () => {
-    it("should throw ForbiddenException if user is not admin", () => {
+    it("should throw ForbiddenException if user is not admin", async () => {
       const regularUser = { id: "user-1", is_admin: false } as User;
-      expect(() => service.getAdminConfig(regularUser)).toThrow(
+      await expect(service.getAdminConfig(regularUser)).rejects.toThrow(
         ForbiddenException,
       );
     });
 
-    it("should return config object if user is admin", () => {
+    it("should return config object if user is admin", async () => {
       const adminUser = { id: "admin-1", is_admin: true } as User;
-      const result = service.getAdminConfig(adminUser);
+      mockPrismaService.systemSetting.findUnique.mockResolvedValue(null);
+      const result = await service.getAdminConfig(adminUser);
       expect(result).toHaveProperty("app_env", "development");
       expect(result).toHaveProperty("app_name", "Funny Chatbot API");
       expect(result).toHaveProperty("groq_configured", true);

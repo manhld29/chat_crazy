@@ -103,17 +103,13 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!storedAdminToken) {
-      router.replace("/admin/login");
+  const loadData = async (isSilent = false) => {
+    if (!storedAdminToken) return;
+    if (!isSilent) {
+      setLoading(true);
+      setError("");
+      setSaveModelSuccess("");
     }
-  }, [router, storedAdminToken]);
-
-  async function load(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault();
-    setLoading(true);
-    setError("");
-    setSaveModelSuccess("");
     try {
       const token = storedAdminToken;
       const [nextConfig, nextDashboard, nextAccounts, nextModelConfig] = await Promise.all([
@@ -126,26 +122,52 @@ export function AdminDashboard() {
       setDashboard(nextDashboard);
       setAccounts(nextAccounts.items);
       setModelConfig(nextModelConfig);
-      setManualModeDraft(nextModelConfig.manual_mode);
-      setSelectedModelDraft(nextModelConfig.selected_model);
-      setLimitDrafts(
-        Object.fromEntries(
-          nextAccounts.items.map((account) => [
-            account.user_id,
-            account.daily_message_limit?.toString() ?? "",
-          ]),
-        ),
-      );
+
+      if (!isSilent) {
+        setManualModeDraft(nextModelConfig.manual_mode);
+        setSelectedModelDraft(nextModelConfig.selected_model);
+      }
+
+      setLimitDrafts((current) => {
+        const newDrafts = { ...current };
+        for (const account of nextAccounts.items) {
+          if (newDrafts[account.user_id] === undefined) {
+            newDrafts[account.user_id] = account.daily_message_limit?.toString() ?? "";
+          }
+        }
+        return newDrafts;
+      });
     } catch (unknownError) {
-      setError(
-        unknownError instanceof ApiError || unknownError instanceof Error
-          ? unknownError.message
-          : "Không tải được dữ liệu admin",
-      );
+      if (!isSilent) {
+        setError(
+          unknownError instanceof ApiError || unknownError instanceof Error
+            ? unknownError.message
+            : "Không tải được dữ liệu admin",
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
-  }
+  };
+
+  useEffect(() => {
+    if (!storedAdminToken) {
+      router.replace("/admin/login");
+      return;
+    }
+
+    // Load initial data automatically
+    void loadData(false);
+
+    // Auto poll every 10 seconds
+    const interval = setInterval(() => {
+      void loadData(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [storedAdminToken, router]);
 
   async function saveUserLimit(userId: string) {
     setLoading(true);
@@ -157,16 +179,7 @@ export function AdminDashboard() {
         throw new Error("Hạn mức không hợp lệ");
       }
       await api.updateAdminUserLimit(storedAdminToken, userId, nextLimit);
-      const nextAccounts = await api.adminAccounts(storedAdminToken);
-      setAccounts(nextAccounts.items);
-      setLimitDrafts(
-        Object.fromEntries(
-          nextAccounts.items.map((account) => [
-            account.user_id,
-            account.daily_message_limit?.toString() ?? "",
-          ]),
-        ),
-      );
+      await loadData(true);
     } catch (unknownError) {
       setError(
         unknownError instanceof ApiError || unknownError instanceof Error
@@ -190,6 +203,7 @@ export function AdminDashboard() {
       );
       setModelConfig(updated);
       setSaveModelSuccess("Đã cập nhật cấu hình Model AI thành công!");
+      await loadData(true);
     } catch (unknownError) {
       setError(
         unknownError instanceof ApiError || unknownError instanceof Error
@@ -217,12 +231,18 @@ export function AdminDashboard() {
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <header className="panel flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="page-title">Bảng quản trị hệ thống</h1>
+            <h1 className="page-title flex items-center gap-3">
+              Bảng quản trị hệ thống
+              <span className="text-[11px] font-normal px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-1.5 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                Tự làm mới (10s)
+              </span>
+            </h1>
             <p className="page-subtitle">Xem cấu hình, chỉ số sử dụng và quản lý tài khoản.</p>
           </div>
-          <form className="flex items-center gap-2" onSubmit={(event) => void load(event)}>
+          <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); void loadData(false); }}>
             <button className="primary-button" disabled={loading} type="submit">
-              {loading ? "Đang tải..." : "Tải dữ liệu admin"}
+              {loading ? "Đang làm mới..." : "Làm mới dữ liệu 🔄"}
             </button>
           </form>
         </header>
@@ -313,7 +333,7 @@ export function AdminDashboard() {
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <Info label="Môi trường" value={config.app_env} />
               <Info label="Ứng dụng" value={`${config.app_name} ${config.app_version}`} />
-              <Info label="Model mặc định" value={config.default_llm_model ?? "Chưa cấu hình"} />
+              <Info label="Model hiện tại (Đang chạy)" value={config.default_llm_model ?? "Chưa cấu hình"} />
               <Info label="Model rẻ" value={config.cheap_llm_model ?? "Chưa cấu hình"} />
               <Info label="Model fallback" value={config.fallback_llm_model ?? "Chưa cấu hình"} />
               <Info label="Groq" value={config.groq_configured ? "Đã cấu hình" : "Chưa cấu hình"} />

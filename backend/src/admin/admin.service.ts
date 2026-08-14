@@ -98,15 +98,30 @@ export class AdminService {
     return this.getModelConfig(user);
   }
 
-  getAdminConfig(user: User) {
+  async getAdminConfig(user: User) {
     if (!user.is_admin) {
       throw new ForbiddenException("Admin access required");
     }
+
+    const modeSetting = await this.prisma.systemSetting.findUnique({
+      where: { key: "manual_model_mode" },
+    });
+    const modelSetting = await this.prisma.systemSetting.findUnique({
+      where: { key: "manual_model_name" },
+    });
+
+    const isManualMode = modeSetting?.value === "true";
+    const manualModel = modelSetting?.value;
+
+    const currentActiveModel = isManualMode && manualModel
+      ? `${manualModel} (Cấu hình thủ công)`
+      : `${this.configService.get("defaultLlmModel", "openrouter/free")} (Tự động Pool)`;
+
     return {
       app_env: this.configService.get("appEnv", "development"),
       app_name: this.configService.get("appName", "Funny Chatbot API"),
       app_version: this.configService.get("appVersion", "0.1.0"),
-      default_llm_model: this.configService.get("defaultLlmModel"),
+      default_llm_model: currentActiveModel,
       cheap_llm_model: this.configService.get("cheapLlmModel"),
       fallback_llm_model: this.configService.get("fallbackLlmModel"),
       groq_configured: !!this.configService.get("groqApiKey"),
