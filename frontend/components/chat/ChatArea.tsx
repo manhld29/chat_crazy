@@ -41,6 +41,10 @@ export function ChatArea({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
 
+  useEffect(() => {
+    setIsEditingNickname(false);
+  }, [activeConversation?.id]);
+
   if (!activeConversation) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-950 p-8">

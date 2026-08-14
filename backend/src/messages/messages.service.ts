@@ -11,20 +11,31 @@ export class MessagesService {
   ) {}
 
   formatMessage(msg: any) {
+    const safeDate = (val: any) => {
+      if (!val) return new Date().toISOString();
+      if (typeof val === "string") return val;
+      if (val instanceof Date) return val.toISOString();
+      try {
+        return new Date(val).toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    };
+
     return {
       id: msg.id,
       conversation_id: msg.conversation_id,
       role: msg.role,
-      content: msg.content,
-      status: msg.status,
-      model: msg.model,
-      input_tokens: msg.input_tokens,
-      output_tokens: msg.output_tokens,
-      latency_ms: msg.latency_ms,
-      error_code: msg.error_code,
-      parent_message_id: msg.parent_message_id,
-      created_at: msg.created_at.toISOString(),
-      updated_at: msg.updated_at.toISOString(),
+      content: msg.content ?? "",
+      status: msg.status ?? "completed",
+      model: msg.model ?? null,
+      input_tokens: msg.input_tokens ?? null,
+      output_tokens: msg.output_tokens ?? null,
+      latency_ms: msg.latency_ms ?? null,
+      error_code: msg.error_code ?? null,
+      parent_message_id: msg.parent_message_id ?? null,
+      created_at: safeDate(msg.created_at),
+      updated_at: safeDate(msg.updated_at),
     };
   }
 

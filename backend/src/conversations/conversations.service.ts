@@ -15,17 +15,28 @@ export class ConversationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   formatConversation(conv: any) {
+    const safeDate = (val: any) => {
+      if (!val) return new Date().toISOString();
+      if (typeof val === "string") return val;
+      if (val instanceof Date) return val.toISOString();
+      try {
+        return new Date(val).toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    };
+
     return {
       id: conv.id,
-      title: conv.title,
-      personality_code: conv.personality_code,
+      title: conv.title || "Cuộc trò chuyện mới",
+      personality_code: conv.personality_code || "friendly",
       ai_nickname: conv.ai_nickname ?? null,
-      summary: conv.summary,
-      summary_version: conv.summary_version,
-      last_message_at: conv.last_message_at.toISOString(),
-      is_archived: conv.is_archived,
-      created_at: conv.created_at.toISOString(),
-      updated_at: conv.updated_at.toISOString(),
+      summary: conv.summary ?? null,
+      summary_version: conv.summary_version ?? 0,
+      last_message_at: safeDate(conv.last_message_at),
+      is_archived: Boolean(conv.is_archived),
+      created_at: safeDate(conv.created_at),
+      updated_at: safeDate(conv.updated_at),
     };
   }
 
