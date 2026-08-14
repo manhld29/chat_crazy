@@ -75,8 +75,17 @@ export function useChatStream(token: string | null, activeConvId: string | null)
             } else if (event === "message.delta") {
               const id = data.id as string;
               const delta = data.delta as string;
+              const model = data.model as string | undefined;
               setMessages((prev) =>
-                prev.map((m) => (m.id === id ? { ...m, content: m.content + delta } : m)),
+                prev.map((m) =>
+                  m.id === id
+                    ? {
+                        ...m,
+                        content: m.content + delta,
+                        ...(model ? { model } : {}),
+                      }
+                    : m,
+                ),
               );
             } else if (event === "message.completed") {
               const completedMsg = data.message as Message;

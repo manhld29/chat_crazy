@@ -268,12 +268,17 @@ export class ChatService {
         max_tokens: personality?.default_max_output_tokens || 1024,
       });
 
+      let actualModelUsed = modelName;
       for await (const chunk of generator) {
+        if ((chunk as any).model) {
+          actualModelUsed = (chunk as any).model;
+        }
         if (chunk.delta) {
           fullAssistantResponse += chunk.delta;
           yield `event: message.delta\ndata: ${JSON.stringify({
             id: assistantMsg.id,
             delta: chunk.delta,
+            model: actualModelUsed,
           })}\n\n`;
         }
         if (chunk.usage) {
@@ -290,7 +295,7 @@ export class ChatService {
         data: {
           content: fullAssistantResponse,
           status: "completed",
-          model: modelName,
+          model: actualModelUsed,
           input_tokens: inputTokens,
           output_tokens: outputTokens,
           latency_ms: latencyMs,

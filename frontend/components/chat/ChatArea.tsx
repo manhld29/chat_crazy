@@ -19,6 +19,27 @@ type ChatAreaProps = {
   onChangeAiNickname?: (nickname: string) => void;
 };
 
+function formatModelName(model: string): string {
+  if (!model) return "";
+  if (model.includes("llama-3.3-70b-instruct")) return "Llama 3.3 70B (Free)";
+  if (model.includes("llama-3.3-70b")) return "Groq Llama 3.3";
+  if (model.includes("gemini-2.0")) return "Gemini 2.0 (Free)";
+  if (model.includes("deepseek-r1")) return "DeepSeek R1 (Free)";
+  if (model.includes("deepseek-chat")) return "DeepSeek V3 (Free)";
+  if (model.includes("openrouter/free")) return "OpenRouter Auto Free";
+  if (model.includes("gemma-4-31b")) return "Gemma 4 31B (Free)";
+  if (model.includes("gemma-4-26b")) return "Gemma 4 26B (Free)";
+  if (model.includes("qwen-2.5")) return "Qwen 2.5 (Free)";
+  if (model.includes("nemotron")) return "Nemotron 3.5 (Free)";
+  if (model.includes("mistral-7b")) return "Mistral 7B (Free)";
+  if (model.includes("gpt-oss")) return "GPT OSS (Free)";
+  if (model.includes("north-mini")) return "North Mini (Free)";
+  if (model.includes("lfm-2.5")) return "LiquidAI (Free)";
+  if (model.includes("llama-3.1-8b")) return "Groq Llama 3.1 8B";
+  const name = model.split("/").pop()?.replace(":free", "") || model;
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 function FormattedMessageContent({ content }: { content: string }) {
   if (!content) return null;
 
@@ -69,7 +90,7 @@ function FormattedMessageContent({ content }: { content: string }) {
             );
           }
 
-          lastIndex = markdownLinkRegex.lastIndex;
+          lastIndex = match.index + match[0].length;
         }
 
         if (lastIndex < line.length) {
@@ -114,23 +135,22 @@ export function ChatArea({
         <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-3xl mb-4 shadow-xl">
           💬
         </div>
-        <h2 className="text-xl font-semibold text-white mb-2">Chào mừng đến với Chat Crazy</h2>
-        <p className="text-xs text-slate-500 max-w-sm text-center">
-          Hãy chọn một cuộc trò chuyện từ thanh bên trái hoặc bấm tạo mới để bắt đầu chat với trợ lý AI!
-        </p>
+        <p className="text-sm font-medium">Chọn hoặc tạo cuộc trò chuyện mới để bắt đầu</p>
       </div>
     );
   }
 
-  const bgClasses: Record<BackgroundTemplate, string> = {
-    mint: "bg-gradient-to-br from-emerald-950/80 via-slate-950 to-teal-950/90",
-    sky: "bg-gradient-to-br from-slate-950 via-sky-950/70 to-indigo-950/90",
-    sunrise: "bg-gradient-to-br from-slate-950 via-purple-950/70 to-rose-950/80",
-    paper: "bg-gradient-to-br from-stone-950 via-amber-950/40 to-slate-950",
-    slate: "bg-slate-950",
+  const activePersonalityCode = activeConversation.personality_code || "friendly";
+
+  const backgroundStyles: Record<BackgroundTemplate, string> = {
+    mint: "bg-slate-950 text-slate-200",
+    sky: "bg-slate-950 text-slate-200",
+    sunrise: "bg-slate-950 text-slate-200",
+    paper: "bg-slate-950 text-slate-200",
+    slate: "bg-slate-950 text-slate-200",
   };
 
-  const aiDisplayName = activeConversation.ai_nickname || "AI";
+  const aiDisplayName = activeConversation.ai_nickname?.trim() || "AI";
 
   const handleSaveNickname = () => {
     if (onChangeAiNickname) {
@@ -140,61 +160,66 @@ export function ChatArea({
   };
 
   return (
-    <div className={`flex-1 flex flex-col h-full overflow-hidden ${bgClasses[currentBackground]}`}>
-      {/* Top Header */}
-      <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur flex items-center justify-between z-10 gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <h1 className="font-semibold text-slate-100 text-sm tracking-tight truncate max-w-xs md:max-w-md">
-            {activeConversation.title}
-          </h1>
-
-          {/* AI Nickname Badge & Quick Edit */}
-          <div className="flex items-center">
-            {isEditingNickname ? (
-              <div className="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={tempNickname}
-                  onChange={(e) => setTempNickname(e.target.value)}
-                  placeholder="Đặt biệt danh AI..."
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveNickname()}
-                  className="bg-slate-950 text-white text-xs px-2.5 py-1 rounded-lg border border-emerald-500/60 outline-none w-36"
-                  autoFocus
-                />
-                <button
-                  onClick={handleSaveNickname}
-                  className="text-xs bg-emerald-500 text-slate-950 font-semibold px-2 py-1 rounded-lg hover:bg-emerald-400"
-                >
-                  Lưu
-                </button>
-                <button
-                  onClick={() => setIsEditingNickname(false)}
-                  className="text-xs text-slate-400 hover:text-white px-1"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setTempNickname(activeConversation.ai_nickname || "");
-                  setIsEditingNickname(true);
-                }}
-                className="text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full hover:bg-emerald-500/20 transition-all flex items-center gap-1"
-                title="Bấm để đổi biệt danh AI trong hội thoại này"
-              >
-                <span>🤖 {aiDisplayName}</span>
-                <span className="opacity-60 text-[9px]">✏️</span>
-              </button>
-            )}
+    <div className={`flex-1 flex flex-col h-full overflow-hidden ${backgroundStyles[currentBackground]}`}>
+      {/* Header Bar */}
+      <header className="h-16 px-4 md:px-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/80 backdrop-blur-md shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col">
+            <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+              {activeConversation.title}
+            </h2>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              {isEditingNickname ? (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <input
+                    type="text"
+                    value={tempNickname}
+                    onChange={(e) => setTempNickname(e.target.value)}
+                    placeholder="Biệt danh AI..."
+                    className="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-0.5 outline-none focus:border-emerald-500"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveNickname();
+                      if (e.key === "Escape") setIsEditingNickname(false);
+                    }}
+                  />
+                  <button
+                    onClick={handleSaveNickname}
+                    className="text-[10px] bg-emerald-500 text-slate-950 font-bold px-2 py-0.5 rounded hover:bg-emerald-400"
+                  >
+                    Lưu
+                  </button>
+                  <button
+                    onClick={() => setIsEditingNickname(false)}
+                    className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded hover:bg-slate-700"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-emerald-400 font-medium">🤖 {aiDisplayName}</span>
+                  <button
+                    onClick={() => {
+                      setTempNickname(activeConversation.ai_nickname || "");
+                      setIsEditingNickname(true);
+                    }}
+                    className="text-[10px] text-slate-500 hover:text-slate-300 underline transition-colors"
+                    title="Đổi biệt danh cho AI trong cuộc trò chuyện này"
+                  >
+                    ✏️ Đổi tên AI
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Customization controls */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Personality selector */}
+        {/* Action controls */}
+        <div className="flex items-center gap-2">
+          {/* Personality Switcher */}
           <select
-            value={activeConversation.personality_code}
+            value={activePersonalityCode}
             onChange={(e) => onChangePersonality(e.target.value)}
             className="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 transition-colors"
           >
@@ -260,11 +285,21 @@ export function ChatArea({
                   }`}
                 >
                   <FormattedMessageContent content={msg.content} />
-                  {msg.latency_ms && (
-                    <span className="text-[10px] text-slate-400 self-end mt-1">
-                      {msg.latency_ms}ms
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 self-end mt-1 text-[10px] text-slate-400">
+                    {!isUser && msg.model && (
+                      <span
+                        className="px-1.5 py-0.5 rounded-md bg-slate-800/80 border border-slate-700/60 text-emerald-400 font-mono font-medium flex items-center gap-1 shadow-sm"
+                        title={`Model: ${msg.model}`}
+                      >
+                        ⚡ {formatModelName(msg.model)}
+                      </span>
+                    )}
+                    {msg.latency_ms && (
+                      <span className="text-slate-400 font-mono">
+                        {msg.latency_ms}ms
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             );
