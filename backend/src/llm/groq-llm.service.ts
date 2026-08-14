@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import * as http from "http";
 import * as https from "https";
 import { URL } from "url";
+import { PrismaService } from "../prisma/prisma.service";
 import { LLMRequest, LLMUsage } from "./llm.types";
 
 export const DEFAULT_FREE_MODEL_POOL = [
@@ -82,7 +83,45 @@ export const OPENROUTER_FREE_MODELS = [
 export class GroqLlmService {
   private readonly logger = new Logger(GroqLlmService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  private async resolveActiveCandidateModels(
+    requestedModel: string,
+  ): Promise<string[]> {
+    try {
+      const modeSetting = await this.prisma.systemSetting.findUnique({
+        where: { key: "manual_model_mode" },
+      });
+      const modelSetting = await this.prisma.systemSetting.findUnique({
+        where: { key: "manual_model_name" },
+      });
+
+      const isManualMode = modeSetting?.value === "true";
+      const manualModel = modelSetting?.value;
+
+      if (isManualMode && manualModel) {
+        this.logger.log(
+          `[Manual Model Setting Active] Forcing primary model: ${manualModel}`,
+        );
+        return [
+          manualModel,
+          ...DEFAULT_FREE_MODEL_POOL.filter((m) => m !== manualModel),
+        ];
+      }
+    } catch (err: any) {
+      this.logger.debug(
+        `Could not read system_settings from DB: ${err.message}`,
+      );
+    }
+
+    return [
+      requestedModel,
+      ...DEFAULT_FREE_MODEL_POOL.filter((m) => m !== requestedModel),
+    ];
+  }
 
   private getProviderConfig(targetModel: string) {
     const isOpenRouterModel =
@@ -140,10 +179,7 @@ export class GroqLlmService {
   }
 
   async createCompletion(req: LLMRequest): Promise<any> {
-    const candidateModels = [
-      req.model,
-      ...DEFAULT_FREE_MODEL_POOL.filter((m) => m !== req.model),
-    ];
+    const candidateModels = await this.resolveActiveCandidateModels(req.model);
 
     let lastError: Error | null = null;
 
@@ -164,7 +200,7 @@ export class GroqLlmService {
       } catch (err: any) {
         lastError = err;
         this.logger.warn(
-          `Free model '${candidateModel}' failed in createCompletion: ${err.message}. Auto-switching to next free model in pool...`,
+          `Free model '${candidateModel}' failed in createCompletion: ${err.message}. Auto-switching to next model in pool...`,
         );
       }
     }
@@ -271,11 +307,12 @@ export class GroqLlmService {
 
   async *streamCompletion(
     req: LLMRequest,
-  ): AsyncGenerator<{ delta: string; usage?: LLMUsage }, void, unknown> {
-    const candidateModels = [
-      req.model,
-      ...DEFAULT_FREE_MODEL_POOL.filter((m) => m !== req.model),
-    ];
+  ): AsyncGenerator<
+    { delta: string; model?: string; usage?: LLMUsage },
+    void,
+    unknown
+  > {
+    const candidateModels = await this.resolveActiveCandidateModels(req.model);
 
     let lastError: Error | null = null;
     let streamSucceeded = false;
@@ -295,7 +332,10 @@ export class GroqLlmService {
         let hasYieldedAnyChunk = false;
         for await (const chunk of streamGenerator) {
           hasYieldedAnyChunk = true;
-          yield chunk;
+          yield {
+            ...chunk,
+            model: candidateModel,
+          };
         }
 
         if (hasYieldedAnyChunk) {
@@ -305,7 +345,7 @@ export class GroqLlmService {
       } catch (err: any) {
         lastError = err;
         this.logger.warn(
-          `Free model '${candidateModel}' failed: ${err.message}. Auto-switching to next free model in pool...`,
+          `Free model '${candidateModel}' failed: ${err.message}. Auto-switching to next model in pool...`,
         );
       }
     }
@@ -324,6 +364,7 @@ export class GroqLlmService {
     }
     yield {
       delta: "",
+      model: "mock-mode",
       usage: {
         prompt_tokens: 15,
         completion_tokens: words.length * 2,

@@ -17,7 +17,7 @@ import { Request, Response } from "express";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { AdminService } from "./admin.service";
-import { AdminLoginDto, UpdateUserLimitDto } from "./dto/admin.dto";
+import { AdminLoginDto, UpdateModelConfigDto, UpdateUserLimitDto } from "./dto/admin.dto";
 
 @Controller("admin")
 export class AdminController {
@@ -69,6 +69,21 @@ export class AdminController {
   @UseGuards(JwtAuthGuard)
   getAdminConfig(@CurrentUser() user: User) {
     return this.adminService.getAdminConfig(user);
+  }
+
+  @Get("model-config")
+  @UseGuards(JwtAuthGuard)
+  getAdminModelConfig(@CurrentUser() user: User) {
+    return this.adminService.getModelConfig(user);
+  }
+
+  @Patch("model-config")
+  @UseGuards(JwtAuthGuard)
+  updateAdminModelConfig(
+    @CurrentUser() user: User,
+    @Body() dto: UpdateModelConfigDto,
+  ) {
+    return this.adminService.updateModelConfig(user, dto);
   }
 
   @Get("dashboard")

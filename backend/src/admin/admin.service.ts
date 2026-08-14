@@ -7,9 +7,10 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { User } from "@prisma/client";
 import { AuthService } from "../auth/auth.service";
+import { OPENROUTER_FREE_MODELS } from "../llm/groq-llm.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
-import { AdminLoginDto, UpdateUserLimitDto } from "./dto/admin.dto";
+import { AdminLoginDto, UpdateModelConfigDto, UpdateUserLimitDto } from "./dto/admin.dto";
 
 @Injectable()
 export class AdminService {
@@ -44,6 +45,57 @@ export class AdminService {
     }
 
     return this.authService.createTokens(user, userAgent, ipAddress);
+  }
+
+  async getModelConfig(user: User) {
+    if (!user.is_admin) {
+      throw new ForbiddenException("Admin access required");
+    }
+
+    const modeSetting = await this.prisma.systemSetting.findUnique({
+      where: { key: "manual_model_mode" },
+    });
+    const modelSetting = await this.prisma.systemSetting.findUnique({
+      where: { key: "manual_model_name" },
+    });
+
+    const manualMode = modeSetting?.value === "true";
+    const selectedModel =
+      modelSetting?.value || "meta-llama/llama-3.3-70b-instruct:free";
+
+    return {
+      manual_mode: manualMode,
+      selected_model: selectedModel,
+      active_model: manualMode
+        ? selectedModel
+        : "openrouter/free (Tự động lựa chọn model free)",
+      available_models: OPENROUTER_FREE_MODELS,
+    };
+  }
+
+  async updateModelConfig(user: User, dto: UpdateModelConfigDto) {
+    if (!user.is_admin) {
+      throw new ForbiddenException("Admin access required");
+    }
+
+    await this.prisma.systemSetting.upsert({
+      where: { key: "manual_model_mode" },
+      update: { value: dto.manual_mode ? "true" : "false" },
+      create: {
+        key: "manual_model_mode",
+        value: dto.manual_mode ? "true" : "false",
+      },
+    });
+
+    if (dto.selected_model) {
+      await this.prisma.systemSetting.upsert({
+        where: { key: "manual_model_name" },
+        update: { value: dto.selected_model },
+        create: { key: "manual_model_name", value: dto.selected_model },
+      });
+    }
+
+    return this.getModelConfig(user);
   }
 
   getAdminConfig(user: User) {

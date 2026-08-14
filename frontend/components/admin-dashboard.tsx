@@ -7,6 +7,7 @@ import {
   AdminAccountUsage,
   AdminConfigResponse,
   AdminDashboardResponse,
+  AdminModelConfigResponse,
   ApiError,
   api,
 } from "@/lib/api";
@@ -26,6 +27,64 @@ function getAdminTokenServerSnapshot() {
   return "";
 }
 
+export function AdminLogin() {
+  const router = useRouter();
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+    try {
+      const response = await api.adminLogin({ identifier, password });
+      sessionStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, response.access_token);
+      router.push("/admin");
+    } catch (unknownError) {
+      setError(
+        unknownError instanceof ApiError || unknownError instanceof Error
+          ? unknownError.message
+          : "Đăng nhập admin thất bại",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="app-main min-h-dvh p-4 text-[var(--foreground)] sm:p-6 lg:p-8 flex items-center justify-center">
+      <form onSubmit={handleSubmit} className="panel w-full max-w-md flex flex-col gap-4">
+        <h1 className="page-title text-center">Đăng nhập Admin</h1>
+        {error && <div className="text-rose-500 text-xs font-medium">⚠️ {error}</div>}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-[var(--muted)]">Email / Username</label>
+          <input
+            type="text"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            required
+            className="input"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-[var(--muted)]">Mật khẩu</label>
+          <PasswordInput
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="input"
+          />
+        </div>
+        <button type="submit" disabled={submitting} className="primary-button w-full mt-2">
+          {submitting ? "Đang xử lý..." : "Đăng nhập Admin"}
+        </button>
+      </form>
+    </main>
+  );
+}
+
 export function AdminDashboard() {
   const router = useRouter();
   const storedAdminToken = useSyncExternalStore(
@@ -37,6 +96,10 @@ export function AdminDashboard() {
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(null);
   const [accounts, setAccounts] = useState<AdminAccountUsage[]>([]);
   const [limitDrafts, setLimitDrafts] = useState<Record<string, string>>({});
+  const [modelConfig, setModelConfig] = useState<AdminModelConfigResponse | null>(null);
+  const [manualModeDraft, setManualModeDraft] = useState(false);
+  const [selectedModelDraft, setSelectedModelDraft] = useState("");
+  const [saveModelSuccess, setSaveModelSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -50,16 +113,21 @@ export function AdminDashboard() {
     event?.preventDefault();
     setLoading(true);
     setError("");
+    setSaveModelSuccess("");
     try {
       const token = storedAdminToken;
-      const [nextConfig, nextDashboard, nextAccounts] = await Promise.all([
+      const [nextConfig, nextDashboard, nextAccounts, nextModelConfig] = await Promise.all([
         api.adminConfig(token),
         api.adminDashboard(token),
         api.adminAccounts(token),
+        api.adminModelConfig(token),
       ]);
       setConfig(nextConfig);
       setDashboard(nextDashboard);
       setAccounts(nextAccounts.items);
+      setModelConfig(nextModelConfig);
+      setManualModeDraft(nextModelConfig.manual_mode);
+      setSelectedModelDraft(nextModelConfig.selected_model);
       setLimitDrafts(
         Object.fromEntries(
           nextAccounts.items.map((account) => [
@@ -110,6 +178,29 @@ export function AdminDashboard() {
     }
   }
 
+  async function saveModelConfig() {
+    setLoading(true);
+    setError("");
+    setSaveModelSuccess("");
+    try {
+      const updated = await api.updateAdminModelConfig(
+        storedAdminToken,
+        manualModeDraft,
+        selectedModelDraft,
+      );
+      setModelConfig(updated);
+      setSaveModelSuccess("Đã cập nhật cấu hình Model AI thành công!");
+    } catch (unknownError) {
+      setError(
+        unknownError instanceof ApiError || unknownError instanceof Error
+          ? unknownError.message
+          : "Không lưu được cấu hình Model AI",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (!storedAdminToken) {
     return (
       <main className="app-main min-h-dvh p-4 text-[var(--foreground)] sm:p-6 lg:p-8">
@@ -123,30 +214,23 @@ export function AdminDashboard() {
 
   return (
     <main className="app-main min-h-dvh p-4 text-[var(--foreground)] sm:p-6 lg:p-8">
-      <div className="mx-auto grid max-w-[1440px] gap-4">
-        <section className="panel">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="page-title">Admin Dashboard</h1>
-              <p className="page-subtitle">
-                Tách riêng cấu hình hệ thống, hoạt động và thống kê tài khoản.
-              </p>
-            </div>
-            <form className="grid gap-2" onSubmit={load}>
-              <button className="primary-button self-end" disabled={loading} type="submit">
-                {loading ? "Đang tải" : "Tải dashboard"}
-              </button>
-            </form>
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <header className="panel flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="page-title">Bảng quản trị hệ thống</h1>
+            <p className="page-subtitle">Xem cấu hình, chỉ số sử dụng và quản lý tài khoản.</p>
           </div>
-          {error && (
-            <div className="mt-4 rounded-md border border-[var(--danger-border)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger)]">
-              {error}
-            </div>
-          )}
-        </section>
+          <form className="flex items-center gap-2" onSubmit={(event) => void load(event)}>
+            <button className="primary-button" disabled={loading} type="submit">
+              {loading ? "Đang tải..." : "Tải dữ liệu admin"}
+            </button>
+          </form>
+        </header>
+
+        {error && <div className="panel text-rose-500 font-medium">⚠️ Lỗi: {error}</div>}
 
         {dashboard && (
-          <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
             <Metric label="Tổng tài khoản" value={String(dashboard.total_users)} />
             <Metric label="Đã đăng ký" value={String(dashboard.registered_users)} />
             <Metric label="Khách" value={String(dashboard.guest_users)} />
@@ -155,6 +239,71 @@ export function AdminDashboard() {
             <Metric label="Input tokens" value={String(dashboard.input_tokens_today)} />
             <Metric label="Output tokens" value={String(dashboard.output_tokens_today)} />
             <Metric label="Request lỗi" value={String(dashboard.failed_requests_today)} />
+          </section>
+        )}
+
+        {/* System Model Settings Section */}
+        {modelConfig && (
+          <section className="panel border border-slate-800 bg-slate-900/80">
+            <h2 className="section-title flex items-center gap-2">
+              🤖 Cấu hình Model AI Hệ thống
+            </h2>
+            <p className="mt-1 text-xs text-slate-400">
+              Admin có thể chọn chế độ <strong>Tự động (Free Pool Failover)</strong> hoặc <strong>Cấu hình Thủ công (Manual Model Setting)</strong>.
+            </p>
+
+            {saveModelSuccess && (
+              <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-medium">
+                ✅ {saveModelSuccess}
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-col gap-4">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={manualModeDraft}
+                  onChange={(e) => setManualModeDraft(e.target.checked)}
+                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                />
+                <span className="text-sm font-semibold text-white">
+                  Bật Cấu hình Thủ công (Manual Model Setting)
+                </span>
+              </label>
+
+              {manualModeDraft ? (
+                <div className="flex flex-col gap-2 p-3.5 bg-slate-950 border border-slate-800 rounded-xl">
+                  <label className="text-xs text-slate-400 font-medium">Chọn Model cố định cho hệ thống:</label>
+                  <select
+                    value={selectedModelDraft}
+                    onChange={(e) => setSelectedModelDraft(e.target.value)}
+                    className="bg-slate-900 border border-slate-700 text-xs text-white rounded-lg px-3 py-2 outline-none focus:border-emerald-500 font-mono"
+                  >
+                    {modelConfig.available_models.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.id})
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] text-amber-400 mt-1">
+                    ⚠️ Hệ thống sẽ ưu tiên chạy Model <strong>{selectedModelDraft}</strong> này.
+                  </span>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300">
+                  ✨ <strong>Đang ở Chế độ Tự động:</strong> Hệ thống tự chọn và luân chuyển các Model Free tốt nhất trong danh sách (OpenRouter Auto Free, Llama 3.3 70B Free, Gemini 2.0 Flash Free, DeepSeek V3, DeepSeek R1...).
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={saveModelConfig}
+                disabled={loading}
+                className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition-colors self-start shadow-md shadow-emerald-950/20 disabled:opacity-50"
+              >
+                {loading ? "Đang lưu..." : "Lưu Cấu Hình Model"}
+              </button>
+            </div>
           </section>
         )}
 
@@ -228,140 +377,34 @@ export function AdminDashboard() {
                   <td className="p-3">{account.input_tokens_today}</td>
                   <td className="p-3">{account.output_tokens_today}</td>
                   <td className="p-3">
-                    {account.last_login_at ? formatDate(account.last_login_at) : "Chưa có"}
+                    {account.last_login_at
+                      ? new Date(account.last_login_at).toLocaleString("vi-VN")
+                      : "Chưa có"}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {accounts.length === 0 && (
-            <p className="mt-4 text-sm text-[var(--muted)]">Chưa tải dữ liệu tài khoản.</p>
-          )}
         </section>
       </div>
     </main>
   );
 }
 
-export function AdminLogin() {
-  const router = useRouter();
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const result = await api.adminLogin({ identifier, password });
-      sessionStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, result.access_token);
-      router.replace("/admin");
-    } catch (unknownError) {
-      setError(
-        unknownError instanceof ApiError || unknownError instanceof Error
-          ? unknownError.message
-          : "Không đăng nhập được admin",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <main className="app-main grid min-h-dvh place-items-center p-4 text-[var(--foreground)]">
-      <section className="panel w-full max-w-md">
-        <h1 className="page-title">Đăng nhập admin</h1>
-        <p className="page-subtitle">
-          Dùng tài khoản đã được phân quyền admin trên backend.
-        </p>
-        <form className="mt-5 grid gap-3" onSubmit={submit}>
-          <Field
-            label="Email hoặc username"
-            onChange={setIdentifier}
-            value={identifier}
-          />
-          <Field
-            label="Mật khẩu"
-            onChange={setPassword}
-            type="password"
-            value={password}
-          />
-          <button
-            className="primary-button"
-            disabled={loading || !identifier.trim() || !password}
-            type="submit"
-          >
-            {loading ? "Đang kiểm tra" : "Đăng nhập admin"}
-          </button>
-        </form>
-        {error && (
-          <div className="mt-4 rounded-md border border-[var(--danger-border)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger)]">
-            {error}
-          </div>
-        )}
-      </section>
-    </main>
-  );
-}
-
-function Field({
-  label,
-  onChange,
-  type = "text",
-  value,
-}: {
-  label: string;
-  onChange: (value: string) => void;
-  type?: string;
-  value: string;
-}) {
-  const id = label.toLowerCase().replaceAll(" ", "-");
-  return (
-    <label className="grid gap-2 text-sm font-semibold" htmlFor={id}>
-      {label}
-      {type === "password" ? (
-        <PasswordInput
-          className="input"
-          id={id}
-          onChange={(event) => onChange(event.target.value)}
-          value={value}
-        />
-      ) : (
-        <input
-          className="input"
-          id={id}
-          onChange={(event) => onChange(event.target.value)}
-          type={type}
-          value={value}
-        />
-      )}
-    </label>
-  );
-}
-
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="panel">
-      <p className="text-xs font-semibold uppercase text-[var(--muted)]">{label}</p>
-      <p className="mt-2 break-words text-2xl font-bold tracking-tight">{value}</p>
+    <div className="panel p-3 text-center">
+      <div className="text-[11px] text-[var(--muted)]">{label}</div>
+      <div className="mt-1 text-lg font-bold text-[var(--foreground)]">{value}</div>
     </div>
   );
 }
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-[var(--border)] bg-white p-3">
-      <dt className="text-xs font-semibold uppercase text-[var(--muted)]">{label}</dt>
-      <dd className="mt-1 break-words font-semibold">{value}</dd>
+    <div className="panel p-3">
+      <div className="text-[11px] text-[var(--muted)]">{label}</div>
+      <div className="mt-1 text-xs font-semibold text-[var(--foreground)]">{value}</div>
     </div>
   );
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }

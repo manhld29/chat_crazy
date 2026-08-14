@@ -124,6 +124,13 @@ export type AdminConfigResponse = {
   rate_limit_per_minute: number;
 };
 
+export type AdminModelConfigResponse = {
+  manual_mode: boolean;
+  selected_model: string;
+  active_model: string;
+  available_models: { id: string; name: string }[];
+};
+
 export type AdminDashboardResponse = {
   total_users: number;
   guest_users: number;
@@ -413,5 +420,17 @@ export const api = {
       token,
       method: "PATCH",
       body: { daily_message_limit: dailyMessageLimit },
+    }),
+  adminModelConfig: (token: string) =>
+    request<AdminModelConfigResponse>("/admin/model-config", { token }),
+  updateAdminModelConfig: (
+    token: string,
+    manualMode: boolean,
+    selectedModel?: string,
+  ) =>
+    request<AdminModelConfigResponse>("/admin/model-config", {
+      token,
+      method: "PATCH",
+      body: { manual_mode: manualMode, selected_model: selectedModel },
     }),
 };

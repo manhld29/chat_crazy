@@ -190,3 +190,11 @@ model PasswordResetToken {
   @@index([user_id])
   @@map("password_reset_tokens")
 }
+
+model SystemSetting {
+  key        String   @id
+  value      String
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  @@map("system_settings")
+}
