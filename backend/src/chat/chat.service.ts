@@ -69,7 +69,7 @@ export class ChatService {
     }
 
     // Add search tool instructions
-    systemPrompt += `\n\nBạn có khả năng tìm kiếm Google thông qua công cụ google_search. Khi người dùng hỏi thông tin thực tế, tin tức mới, thời tiết, sự kiện, giá cả hoặc bất kỳ thông tin nào bạn không chắc chắn/thiếu dữ liệu, bạn PHẢI dùng tool google_search để tra cứu thông tin. Khi trả lời có thông tin tìm kiếm, BẮT BUỘC phải đính kèm các đường dẫn tham khảo dưới dạng Markdown: [Tên bài viết](URL).`;
+    systemPrompt += `\n\nBạn có khả năng tìm kiếm thông tin tự động thông qua công cụ tra cứu web. Khi nhận được dữ liệu tìm kiếm, nhiệm vụ của bạn là TỔNG HỢP thông tin một cách ngắn gọn, mạch lạc, đầy đủ nội dung chính và giải đáp trực tiếp câu hỏi của người dùng. Tuyệt đối không chỉ trích dẫn thô hay lặp lại danh sách các đoạn văn tìm được. Cuối câu trả lời, luôn đính kèm mục "**📌 Nguồn tham khảo:**" với các link dạng Markdown [Tiêu đề](URL).`;
 
     // Create user message
     const userMsg = await this.prisma.message.create({
@@ -229,11 +229,11 @@ export class ChatService {
         );
 
         if (searchResults.length > 0) {
-          let contextStr = `\n\n[KẾT QUẢ TÌM KIẾM GOOGLE CHO: "${searchQuery}"]\n`;
+          let contextStr = `\n\n[DỮ LIỆU TÌM KIẾM CHO TỪ KHÓA: "${searchQuery}"]\n`;
           searchResults.forEach((r, idx) => {
-            contextStr += `Nguồn ${idx + 1}:\n- Tiêu đề: ${r.title}\n- Link: ${r.url}\n- Nội dung: ${r.snippet}\n\n`;
+            contextStr += `Nguồn ${idx + 1}:\n- Tiêu đề: ${r.title}\n- Link: ${r.url}\n- Nội dung trích xuất: ${r.snippet}\n\n`;
           });
-          contextStr += `Hãy tổng hợp câu trả lời đầy đủ, chính xác dựa trên thông tin trên. Cuối bài BẮT BUỘC đính kèm danh sách "Nguồn tham khảo:" với các link Markdown dạng [Tiêu đề trang](URL).`;
+          contextStr += `YÊU CẦU XỬ LÝ:\n1. Phân tích và TỔNG HỢP toàn bộ dữ liệu trên thành một câu trả lời ngắn gọn, cô đọng, trực tiếp giải đáp câu hỏi của người dùng.\n2. Trình bày nội dung tự nhiên, rõ ràng, phân chia ý chính nếu cần. Tuyệt đối KHÔNG được chỉ liệt kê thô hay chép lại danh sách nguồn ở phần thân bài.\n3. Ở cuối câu trả lời, BẮT BUỘC liệt kê danh sách nguồn tham khảo theo định dạng:\n\n**📌 Nguồn tham khảo:**\n- [Tiêu đề trang 1](URL 1)\n- [Tiêu đề trang 2](URL 2)`;
 
           llmMessages.push({
             role: "system",
