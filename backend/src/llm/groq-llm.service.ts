@@ -49,40 +49,60 @@ export class GroqLlmService {
 
     const requestBody = JSON.stringify(bodyObj);
 
-    const isHttps = url.protocol === "https:";
-    const httpLib = isHttps ? https : http;
-
-    const requestOptions = {
-      method: "POST",
-      hostname: url.hostname,
-      port: url.port || (isHttps ? 443 : 80),
-      path: url.pathname + url.search,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Length": Buffer.byteLength(requestBody),
-      },
-    };
-
-    const res: http.IncomingMessage = await new Promise((resolve, reject) => {
-      const clientReq = httpLib.request(requestOptions, (res) => resolve(res));
-      clientReq.on("error", (err) => reject(err));
-      clientReq.write(requestBody);
-      clientReq.end();
-    });
-
+    const maxRetries = 3;
+    let res: http.IncomingMessage | null = null;
     let resText = "";
-    for await (const chunk of res) {
-      resText += chunk.toString();
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const isHttps = url.protocol === "https:";
+      const httpLib = isHttps ? https : http;
+
+      const requestOptions = {
+        method: "POST",
+        hostname: url.hostname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname + url.search,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Length": Buffer.byteLength(requestBody),
+        },
+      };
+
+      res = await new Promise<http.IncomingMessage>((resolve, reject) => {
+        const clientReq = httpLib.request(requestOptions, (r) => resolve(r));
+        clientReq.on("error", (err) => reject(err));
+        clientReq.write(requestBody);
+        clientReq.end();
+      });
+
+      if (res.statusCode === 429 && attempt < maxRetries) {
+        let errBody = "";
+        for await (const chunk of res) {
+          errBody += chunk.toString();
+        }
+        this.logger.warn(
+          `Groq API 429 Rate limit hit in createCompletion (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${600 * (attempt + 1)}ms...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+        continue;
+      }
+
+      resText = "";
+      for await (const chunk of res) {
+        resText += chunk.toString();
+      }
+
+      if (res.statusCode && res.statusCode >= 400) {
+        throw new Error(
+          `Groq LLM API returned status ${res.statusCode}: ${resText}`,
+        );
+      }
+
+      return JSON.parse(resText);
     }
 
-    if (res.statusCode && res.statusCode >= 400) {
-      throw new Error(
-        `Groq LLM API returned status ${res.statusCode}: ${resText}`,
-      );
-    }
-
-    return JSON.parse(resText);
+    throw new Error(`Groq LLM API failed after ${maxRetries} retries.`);
   }
 
   async *streamCompletion(
@@ -134,35 +154,58 @@ export class GroqLlmService {
 
     const requestBody = JSON.stringify(bodyObj);
 
-    const isHttps = url.protocol === "https:";
-    const httpLib = isHttps ? https : http;
+    const maxRetries = 3;
+    let res: http.IncomingMessage | null = null;
 
-    const requestOptions = {
-      method: "POST",
-      hostname: url.hostname,
-      port: url.port || (isHttps ? 443 : 80),
-      path: url.pathname + url.search,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Length": Buffer.byteLength(requestBody),
-      },
-    };
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const isHttps = url.protocol === "https:";
+      const httpLib = isHttps ? https : http;
 
-    const res: http.IncomingMessage = await new Promise((resolve, reject) => {
-      const clientReq = httpLib.request(requestOptions, (res) => resolve(res));
-      clientReq.on("error", (err) => reject(err));
-      clientReq.write(requestBody);
-      clientReq.end();
-    });
+      const requestOptions = {
+        method: "POST",
+        hostname: url.hostname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname + url.search,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Length": Buffer.byteLength(requestBody),
+        },
+      };
 
-    if (res.statusCode && res.statusCode >= 400) {
+      res = await new Promise<http.IncomingMessage>((resolve, reject) => {
+        const clientReq = httpLib.request(requestOptions, (response) =>
+          resolve(response),
+        );
+        clientReq.on("error", (err) => reject(err));
+        clientReq.write(requestBody);
+        clientReq.end();
+      });
+
+      if (res.statusCode === 429 && attempt < maxRetries) {
+        let errBody = "";
+        for await (const chunk of res) {
+          errBody += chunk.toString();
+        }
+        this.logger.warn(
+          `Groq API 429 Rate limit hit in streamCompletion (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${600 * (attempt + 1)}ms...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+        continue;
+      }
+
+      break;
+    }
+
+    if (!res || (res.statusCode && res.statusCode >= 400)) {
       let errBody = "";
-      for await (const chunk of res) {
-        errBody += chunk.toString();
+      if (res) {
+        for await (const chunk of res) {
+          errBody += chunk.toString();
+        }
       }
       throw new Error(
-        `Groq LLM API returned status ${res.statusCode}: ${errBody}`,
+        `Groq LLM API returned status ${res?.statusCode || 500}: ${errBody}`,
       );
     }
 

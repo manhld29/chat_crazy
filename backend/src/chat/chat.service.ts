@@ -140,7 +140,7 @@ export class ChatService {
 
     const fullSystemPrompt = systemPrompt + memoryPrompt;
 
-    const llmMessages: LLMMessage[] = [
+    let llmMessages: LLMMessage[] = [
       { role: "system", content: fullSystemPrompt },
       ...pastMessages.map((m) => ({
         role: m.role as "user" | "assistant" | "system",
@@ -230,10 +230,23 @@ export class ChatService {
 
         if (searchResults.length > 0) {
           let contextStr = `\n\n[DỮ LIỆU TÌM KIẾM CHO TỪ KHÓA: "${searchQuery}"]\n`;
-          searchResults.forEach((r, idx) => {
-            contextStr += `Nguồn ${idx + 1}:\n- Tiêu đề: ${r.title}\n- Link: ${r.url}\n- Nội dung trích xuất: ${r.snippet}\n\n`;
+          searchResults.slice(0, 4).forEach((r, idx) => {
+            const shortSnippet =
+              r.snippet.length > 300
+                ? r.snippet.slice(0, 300) + "..."
+                : r.snippet;
+            contextStr += `Nguồn ${idx + 1}:\n- Tiêu đề: ${r.title}\n- Link: ${r.url}\n- Nội dung: ${shortSnippet}\n\n`;
           });
           contextStr += `YÊU CẦU XỬ LÝ:\n1. Phân tích và TỔNG HỢP toàn bộ dữ liệu trên thành một câu trả lời ngắn gọn, cô đọng, trực tiếp giải đáp câu hỏi của người dùng.\n2. Trình bày nội dung tự nhiên, rõ ràng, phân chia ý chính nếu cần. Tuyệt đối KHÔNG được chỉ liệt kê thô hay chép lại danh sách nguồn ở phần thân bài.\n3. Ở cuối câu trả lời, BẮT BUỘC liệt kê danh sách nguồn tham khảo theo định dạng:\n\n**📌 Nguồn tham khảo:**\n- [Tiêu đề trang 1](URL 1)\n- [Tiêu đề trang 2](URL 2)`;
+
+          // Prune older history to stay well below Groq 6000 TPM limit
+          if (llmMessages.length > 6) {
+            const systemMsgs = llmMessages.filter((m) => m.role === "system");
+            const recentMsgs = llmMessages
+              .filter((m) => m.role !== "system")
+              .slice(-4);
+            llmMessages = [...systemMsgs, ...recentMsgs];
+          }
 
           llmMessages.push({
             role: "system",
