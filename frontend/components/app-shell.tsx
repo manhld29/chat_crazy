@@ -34,6 +34,7 @@ export function AppShell({
   const [authMode, setAuthMode] = useState<AuthMode>(initialAuthMode);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCreateConvOpen, setIsCreateConvOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Form states
   const [email, setEmail] = useState("");
@@ -314,6 +315,8 @@ export function AppShell({
         onRename={(id, title) => updateConversation(id, { title })}
         onLogout={logout}
         onOpenUpgrade={() => setIsProfileOpen(true)}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main View Area */}
@@ -338,6 +341,7 @@ export function AppShell({
             onChangeAiNickname={(nickname) => {
               if (activeConvId) updateConversation(activeConvId, { ai_nickname: nickname });
             }}
+            onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           />
         )}
 

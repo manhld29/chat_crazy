@@ -17,6 +17,7 @@ type ChatAreaProps = {
   onChangeBackground: (bg: BackgroundTemplate) => void;
   onChangePersonality: (code: string) => void;
   onChangeAiNickname?: (nickname: string) => void;
+  onOpenMobileSidebar?: () => void;
 };
 
 function formatModelName(model: string): string {
@@ -116,6 +117,7 @@ export function ChatArea({
   onChangeBackground,
   onChangePersonality,
   onChangeAiNickname,
+  onOpenMobileSidebar,
 }: ChatAreaProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [isEditingNickname, setIsEditingNickname] = useState(false);
@@ -131,7 +133,15 @@ export function ChatArea({
 
   if (!activeConversation) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-950 p-8">
+      <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-950 p-6 text-center">
+        {onOpenMobileSidebar && (
+          <button
+            onClick={onOpenMobileSidebar}
+            className="md:hidden absolute top-4 left-4 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-bold text-xs"
+          >
+            ☰ Danh sách hội thoại
+          </button>
+        )}
         <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-3xl mb-4 shadow-xl">
           💬
         </div>
@@ -162,13 +172,23 @@ export function ChatArea({
   return (
     <div className={`flex-1 flex flex-col h-full overflow-hidden ${backgroundStyles[currentBackground]}`}>
       {/* Header Bar */}
-      <header className="h-16 px-4 md:px-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/80 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col">
-            <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+      <header className="h-16 px-3 md:px-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/80 backdrop-blur-md shrink-0 gap-2">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          {onOpenMobileSidebar && (
+            <button
+              onClick={onOpenMobileSidebar}
+              className="md:hidden p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 transition-colors text-xs font-bold shrink-0"
+              title="Mở danh sách hội thoại"
+            >
+              ☰
+            </button>
+          )}
+
+          <div className="flex flex-col min-w-0">
+            <h2 className="text-xs md:text-sm font-bold text-white tracking-tight flex items-center gap-2 truncate">
               {activeConversation.title}
             </h2>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2 text-[11px] text-slate-400">
               {isEditingNickname ? (
                 <div className="flex items-center gap-1 mt-0.5">
                   <input
@@ -176,7 +196,7 @@ export function ChatArea({
                     value={tempNickname}
                     onChange={(e) => setTempNickname(e.target.value)}
                     placeholder="Biệt danh AI..."
-                    className="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-0.5 outline-none focus:border-emerald-500"
+                    className="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-0.5 outline-none focus:border-emerald-500 w-24 md:w-auto"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleSaveNickname();
@@ -205,9 +225,9 @@ export function ChatArea({
                       setIsEditingNickname(true);
                     }}
                     className="text-[10px] text-slate-500 hover:text-slate-300 underline transition-colors"
-                    title="Đổi biệt danh cho AI trong cuộc trò chuyện này"
+                    title="Đổi biệt danh cho AI"
                   >
-                    ✏️ Đổi tên AI
+                    ✏️ Đổi tên
                   </button>
                 </div>
               )}
@@ -216,12 +236,12 @@ export function ChatArea({
         </div>
 
         {/* Action controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           {/* Personality Switcher */}
           <select
             value={activePersonalityCode}
             onChange={(e) => onChangePersonality(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 transition-colors"
+            className="bg-slate-800 border border-slate-700 text-[11px] md:text-xs text-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-emerald-500 transition-colors max-w-[120px] md:max-w-none"
           >
             {personalities.map((p) => (
               <option key={p.code} value={p.code}>
@@ -234,11 +254,11 @@ export function ChatArea({
           <select
             value={currentBackground}
             onChange={(e) => onChangeBackground(e.target.value as BackgroundTemplate)}
-            className="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-emerald-500 transition-colors"
+            className="bg-slate-800 border border-slate-700 text-[11px] md:text-xs text-slate-200 rounded-lg px-2 py-1.5 outline-none focus:border-emerald-500 transition-colors max-w-[110px] md:max-w-none"
           >
             {backgroundTemplates.map((bg) => (
               <option key={bg.value} value={bg.value}>
-                🎨 Phông: {bg.label}
+                🎨 {bg.label}
               </option>
             ))}
           </select>
@@ -246,7 +266,7 @@ export function ChatArea({
       </header>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 flex flex-col gap-4 custom-scrollbar">
         {messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-xs text-slate-500">
             Hãy bắt đầu trò chuyện bằng cách nhập tin nhắn bên dưới!
@@ -258,11 +278,11 @@ export function ChatArea({
             return (
               <div
                 key={msg.id}
-                className={`flex gap-3 max-w-3xl ${isUser ? "ml-auto flex-row-reverse" : "mr-auto"}`}
+                className={`flex gap-2.5 md:gap-3 max-w-[90%] md:max-w-3xl ${isUser ? "ml-auto flex-row-reverse" : "mr-auto"}`}
               >
                 {/* Avatar */}
                 <div
-                  className={`min-w-[32px] h-8 px-2 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 shadow-md ${
+                  className={`min-w-[28px] md:min-w-[32px] h-7 md:h-8 px-1.5 md:px-2 rounded-xl flex items-center justify-center font-bold text-[11px] md:text-xs shrink-0 shadow-md ${
                     isUser
                       ? "bg-emerald-500 text-slate-950"
                       : "bg-slate-800 text-emerald-400 border border-slate-700"
@@ -271,14 +291,14 @@ export function ChatArea({
                 >
                   {isUser
                     ? "Bạn"
-                    : aiDisplayName.length > 8
-                    ? aiDisplayName.slice(0, 7) + "…"
+                    : aiDisplayName.length > 6
+                    ? aiDisplayName.slice(0, 5) + "…"
                     : aiDisplayName}
                 </div>
 
                 {/* Content Bubble */}
                 <div
-                  className={`flex flex-col gap-1 p-3.5 rounded-2xl text-xs leading-relaxed max-w-xl shadow-sm ${
+                  className={`flex flex-col gap-1 p-3 md:p-3.5 rounded-2xl text-xs leading-relaxed max-w-full shadow-sm ${
                     isUser
                       ? "bg-emerald-600 text-white rounded-tr-none"
                       : "bg-slate-900 text-slate-200 border border-slate-800 rounded-tl-none"
@@ -319,7 +339,7 @@ export function ChatArea({
       </div>
 
       {/* Input Composer */}
-      <div className="p-4 border-t border-slate-800 bg-slate-900/60">
+      <div className="p-3 md:p-4 border-t border-slate-800 bg-slate-900/60">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -333,12 +353,12 @@ export function ChatArea({
             onChange={(e) => setInputContent(e.target.value)}
             placeholder="Nhập nội dung tin nhắn..."
             disabled={isStreaming}
-            className="flex-1 bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 rounded-xl px-4 py-3 outline-none focus:border-emerald-500/50 transition-colors disabled:opacity-50"
+            className="flex-1 bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 rounded-xl px-3.5 py-2.5 md:py-3 outline-none focus:border-emerald-500/50 transition-colors disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={!inputContent.trim() || isStreaming}
-            className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-semibold px-5 py-3 rounded-xl text-xs transition-all disabled:opacity-40 shadow-md shadow-emerald-950/20"
+            className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-semibold px-4 md:px-5 py-2.5 md:py-3 rounded-xl text-xs transition-all disabled:opacity-40 shadow-md shadow-emerald-950/20 shrink-0"
           >
             {isStreaming ? "Đang gửi..." : "Gửi 🚀"}
           </button>

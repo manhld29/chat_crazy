@@ -55,7 +55,7 @@ export function AdminLogin() {
 
   return (
     <main className="min-h-dvh bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl flex flex-col gap-6">
+      <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl flex flex-col gap-6">
         <div className="flex flex-col items-center text-center gap-2">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center text-2xl font-black shadow-lg shadow-emerald-500/20">
             ⚡
@@ -118,6 +118,7 @@ export function AdminDashboard() {
   );
 
   const [activeNav, setActiveNav] = useState<ActiveNav>("overview");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const [config, setConfig] = useState<AdminConfigResponse | null>(null);
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(null);
@@ -371,20 +372,46 @@ export function AdminDashboard() {
 
   const adminUsers = accounts.filter((a) => a.is_admin);
 
+  const handleSelectNav = (nav: ActiveNav) => {
+    setActiveNav(nav);
+    setIsMobileSidebarOpen(false);
+  };
+
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100 font-sans flex flex-col md:flex-row">
+      {/* Mobile Drawer Backdrop */}
+      {isMobileSidebarOpen && (
+        <div
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden"
+        />
+      )}
+
       {/* LEFT SIDEBAR NAVIGATION MENU */}
-      <aside className="w-full md:w-64 bg-slate-900/90 border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0 backdrop-blur-xl">
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900/95 border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0 backdrop-blur-xl transition-transform duration-300 md:translate-x-0 md:static md:w-64 ${
+          isMobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
+      >
         <div className="flex flex-col gap-6">
           {/* Brand logo */}
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center font-black text-lg shadow-lg shadow-emerald-500/20">
-              ⚡
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center font-black text-lg shadow-lg shadow-emerald-500/20">
+                ⚡
+              </div>
+              <div className="flex flex-col">
+                <span className="font-black text-sm text-white tracking-tight">ChatCrazy</span>
+                <span className="text-[10px] text-emerald-400 font-mono font-semibold">ADMIN CONTROL</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="font-black text-sm text-white tracking-tight">ChatCrazy</span>
-              <span className="text-[10px] text-emerald-400 font-mono font-semibold">ADMIN CONTROL</span>
-            </div>
+
+            <button
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="md:hidden text-slate-400 hover:text-white p-1 text-base font-bold"
+            >
+              ✕
+            </button>
           </div>
 
           {/* Navigation Items */}
@@ -393,27 +420,27 @@ export function AdminDashboard() {
               icon="📊"
               label="Tổng Quan & Visuals"
               active={activeNav === "overview"}
-              onClick={() => setActiveNav("overview")}
+              onClick={() => handleSelectNav("overview")}
             />
             <NavItem
               icon="🤖"
               label="Cấu Hình Model AI"
               active={activeNav === "model_config"}
-              onClick={() => setActiveNav("model_config")}
+              onClick={() => handleSelectNav("model_config")}
               badge={modelConfig?.manual_mode ? "Thủ công" : "Auto Free"}
             />
             <NavItem
               icon="👤"
               label="Quản Lý Người Dùng"
               active={activeNav === "users"}
-              onClick={() => setActiveNav("users")}
+              onClick={() => handleSelectNav("users")}
               count={accounts.filter((a) => !a.is_admin).length}
             />
             <NavItem
               icon="👑"
               label="Quản Lý Admin"
               active={activeNav === "admins"}
-              onClick={() => setActiveNav("admins")}
+              onClick={() => handleSelectNav("admins")}
               count={adminUsers.length}
               highlight
             />
@@ -421,7 +448,7 @@ export function AdminDashboard() {
               icon="⚙️"
               label="Hệ Thống & Metric"
               active={activeNav === "system"}
-              onClick={() => setActiveNav("system")}
+              onClick={() => handleSelectNav("system")}
             />
           </nav>
         </div>
@@ -450,35 +477,43 @@ export function AdminDashboard() {
       {/* MAIN WORKSPACE CONTENT */}
       <div className="flex-1 flex flex-col min-w-0 bg-slate-950 overflow-y-auto">
         {/* TOP BAR HEADER */}
-        <header className="h-16 border-b border-slate-800/80 px-6 flex items-center justify-between bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
-          <div className="flex items-center gap-3">
-            <h1 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+        <header className="h-16 border-b border-slate-800/80 px-4 md:px-6 flex items-center justify-between bg-slate-900/60 backdrop-blur-md sticky top-0 z-30 gap-2">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 transition-colors text-xs font-bold shrink-0"
+              title="Mở menu admin"
+            >
+              ☰ Menu
+            </button>
+
+            <h1 className="text-xs sm:text-sm md:text-base font-bold text-white tracking-tight flex items-center gap-2 truncate">
               {activeNav === "overview" && "📊 Tổng Quan & Chỉ Số Hệ Thống"}
-              {activeNav === "model_config" && "🤖 Cấu Hình Model AI Hệ Thống"}
-              {activeNav === "users" && "👤 Quản Lý Người Dùng Phổ Thông"}
-              {activeNav === "admins" && "👑 Quản Lý Tài Khoản Admin"}
-              {activeNav === "system" && "⚙️ Cấu Hình Kỹ Thuật & Metric"}
+              {activeNav === "model_config" && "🤖 Cấu Hình Model AI"}
+              {activeNav === "users" && "👤 Quản Lý Người Dùng"}
+              {activeNav === "admins" && "👑 Quản Lý Admin"}
+              {activeNav === "system" && "⚙️ Cấu Hình & Metric"}
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-medium px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1.5">
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            <span className="text-[10px] md:text-[11px] font-medium px-2.5 md:px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Auto Sync (10s)
+              <span className="hidden sm:inline">Auto Sync (10s)</span>
             </span>
 
             <button
               onClick={() => void loadData(false)}
               disabled={loading}
-              className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+              className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold px-2.5 md:px-3 py-1.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
             >
-              {loading ? "Đang tải..." : "🔄 Làm mới"}
+              {loading ? "..." : "🔄 Làm mới"}
             </button>
           </div>
         </header>
 
         {/* WORKSPACE VIEW AREA */}
-        <main className="p-6 flex flex-col gap-6 max-w-7xl mx-auto w-full">
+        <main className="p-3 sm:p-6 flex flex-col gap-6 max-w-7xl mx-auto w-full">
           {error && (
             <div className="p-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-2xl text-xs font-semibold flex items-center gap-2">
               ⚠️ Lỗi: {error}
@@ -495,7 +530,7 @@ export function AdminDashboard() {
           {activeNav === "overview" && dashboard && (
             <div className="flex flex-col gap-6">
               {/* Metric Cards Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 sm:gap-3">
                 <MetricCard label="Tổng tài khoản" value={dashboard.total_users} icon="👥" color="emerald" />
                 <MetricCard label="Đã đăng ký" value={dashboard.registered_users} icon="✨" color="teal" />
                 <MetricCard label="Khách" value={dashboard.guest_users} icon="👤" color="slate" />
@@ -509,15 +544,15 @@ export function AdminDashboard() {
               {/* Visual Charts Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Chart 1: Token Usage Bar Visualization */}
-                <div className="lg:col-span-2 bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between backdrop-blur-xl">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="lg:col-span-2 bg-slate-900/80 border border-slate-800/80 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col justify-between backdrop-blur-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                     <div>
                       <h3 className="text-sm font-bold text-white flex items-center gap-2">
                         📈 Biểu đồ Token Usage Hôm nay
                       </h3>
                       <p className="text-xs text-slate-400">So sánh tỷ lệ Token Nạp vào (Input) và Token Sinh ra (Output)</p>
                     </div>
-                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg self-start sm:self-auto">
                       {(dashboard.input_tokens_today + dashboard.output_tokens_today).toLocaleString()} Total Tokens
                     </span>
                   </div>
@@ -529,7 +564,7 @@ export function AdminDashboard() {
                 </div>
 
                 {/* Chart 2: User Distribution Donut Visualization */}
-                <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between backdrop-blur-xl">
+                <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col justify-between backdrop-blur-xl">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       🍩 Cơ Cấu Tài Khoản
@@ -547,22 +582,22 @@ export function AdminDashboard() {
 
               {/* Quick Model Summary Card */}
               {modelConfig && (
-                <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl font-bold">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl font-bold shrink-0">
                       🤖
                     </div>
-                    <div className="flex flex-col">
+                    <div className="flex flex-col min-w-0">
                       <span className="text-xs text-slate-400 font-medium">Model AI Đang Hoạt Động Trên Hệ Thống</span>
-                      <span className="text-base font-black text-white font-mono flex items-center gap-2 mt-0.5">
+                      <span className="text-xs sm:text-base font-black text-white font-mono flex items-center gap-2 mt-0.5 truncate">
                         ⚡ {modelConfig.active_model}
                       </span>
                     </div>
                   </div>
 
                   <button
-                    onClick={() => setActiveNav("model_config")}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-emerald-950/20 shrink-0"
+                    onClick={() => handleSelectNav("model_config")}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-emerald-950/20 shrink-0 w-full sm:w-auto text-center"
                   >
                     Thay Đổi Cấu Hình Model ⚙️
                   </button>
@@ -573,7 +608,7 @@ export function AdminDashboard() {
 
           {/* VIEW 2: MODEL CONFIGURATION */}
           {activeNav === "model_config" && modelConfig && (
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-5 sm:p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
               <div className="flex flex-col gap-1 border-b border-slate-800 pb-4">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   🤖 Cấu Hình Model AI Hệ Thống
@@ -591,7 +626,7 @@ export function AdminDashboard() {
 
               <div className="flex flex-col gap-6">
                 {/* Manual Setting Switch */}
-                <div className="flex items-center justify-between bg-slate-950 p-5 rounded-2xl border border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800 gap-4">
                   <div className="flex flex-col gap-1">
                     {/* Explicit Black Label text as requested by user */}
                     <span className="text-sm font-bold text-slate-900 bg-white px-3 py-1 rounded-lg shadow-sm inline-block self-start">
@@ -606,18 +641,18 @@ export function AdminDashboard() {
                     type="checkbox"
                     checked={manualModeDraft}
                     onChange={(e) => setManualModeDraft(e.target.checked)}
-                    className="w-6 h-6 accent-emerald-500 rounded cursor-pointer"
+                    className="w-6 h-6 accent-emerald-500 rounded cursor-pointer shrink-0"
                   />
                 </div>
 
                 {/* Model Selector Box */}
                 {manualModeDraft ? (
-                  <div className="flex flex-col gap-3 p-5 bg-slate-950 border border-slate-800 rounded-2xl">
+                  <div className="flex flex-col gap-3 p-4 sm:p-5 bg-slate-950 border border-slate-800 rounded-2xl">
                     <label className="text-xs text-slate-300 font-bold">Chọn Model Cố Định Từ Danh Sách:</label>
                     <select
                       value={selectedModelDraft}
                       onChange={(e) => setSelectedModelDraft(e.target.value)}
-                      className="bg-slate-900 border border-slate-700 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500 font-mono"
+                      className="bg-slate-900 border border-slate-700 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500 font-mono w-full"
                     >
                       {modelConfig.available_models.map((m) => (
                         <option key={m.id} value={m.id}>
@@ -630,7 +665,7 @@ export function AdminDashboard() {
                     </span>
                   </div>
                 ) : (
-                  <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-300 leading-relaxed">
+                  <div className="p-4 sm:p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-300 leading-relaxed">
                     ✨ <strong>Đang Ở Chế Độ Tự Động (Free Model Failover Pool):</strong> Hệ thống tự chọn và luân chuyển giữa 15 model miễn phí chất lượng cao (OpenRouter Auto Free, Meta Llama 3.3 70B, Google Gemini 2.0 Flash, DeepSeek V3, DeepSeek R1, Gemma 4...). Nếu 1 model bận, hệ thống sẽ tự nhảy sang model khác ngay lập tức.
                   </div>
                 )}
@@ -639,7 +674,7 @@ export function AdminDashboard() {
                   type="button"
                   onClick={saveModelConfig}
                   disabled={loading}
-                  className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold px-6 py-3 rounded-xl text-xs transition-all self-start shadow-lg shadow-emerald-950/20 disabled:opacity-50"
+                  className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold px-6 py-3 rounded-xl text-xs transition-all self-start shadow-lg shadow-emerald-950/20 disabled:opacity-50 w-full sm:w-auto text-center"
                 >
                   {loading ? "Đang lưu cấu hình..." : "Lưu Cấu Hình Model 🚀"}
                 </button>
@@ -649,7 +684,7 @@ export function AdminDashboard() {
 
           {/* VIEW 3: REGULAR USER MANAGEMENT */}
           {activeNav === "users" && (
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -667,8 +702,8 @@ export function AdminDashboard() {
                 />
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-[900px] w-full border-collapse text-left text-sm">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="min-w-[850px] w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400 text-xs font-semibold">
                       <th className="p-3">Người dùng</th>
@@ -696,9 +731,9 @@ export function AdminDashboard() {
                               <div className="w-8 h-8 rounded-full bg-slate-800 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-700">
                                 {account.display_name.slice(0, 2).toUpperCase()}
                               </div>
-                              <div className="flex flex-col">
-                                <span className="font-bold text-white text-xs">{account.display_name}</span>
-                                <span className="text-[11px] text-slate-400">{account.email ?? (account.username ? `@${account.username}` : "Tài khoản Khách")}</span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-white text-xs truncate">{account.display_name}</span>
+                                <span className="text-[11px] text-slate-400 truncate">{account.email ?? (account.username ? `@${account.username}` : "Tài khoản Khách")}</span>
                               </div>
                             </div>
                           </td>
@@ -715,7 +750,7 @@ export function AdminDashboard() {
                           <td className="p-3 font-mono text-xs text-slate-300">{account.conversations}</td>
                           <td className="p-3 font-mono text-xs text-emerald-400 font-bold">{account.messages_today}</td>
                           <td className="p-3">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 min-w-[140px]">
                               <input
                                 aria-label={`Giới hạn tin cho ${account.display_name}`}
                                 className="bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-2.5 py-1 outline-none focus:border-emerald-500 w-20 font-mono"
@@ -786,7 +821,7 @@ export function AdminDashboard() {
 
           {/* VIEW 4: ADMIN MANAGEMENT */}
           {activeNav === "admins" && (
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -797,14 +832,14 @@ export function AdminDashboard() {
 
                 <button
                   onClick={() => setShowCreateAdminModal(true)}
-                  className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
+                  className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 w-full sm:w-auto"
                 >
                   ➕ Tạo Tài Khoản Admin Mới
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-[800px] w-full border-collapse text-left text-sm">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="min-w-[750px] w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400 text-xs font-semibold">
                       <th className="p-3">Admin</th>
@@ -875,7 +910,7 @@ export function AdminDashboard() {
 
           {/* VIEW 5: SYSTEM HEALTH & CONFIG */}
           {activeNav === "system" && config && (
-            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
               <div className="flex flex-col gap-1 border-b border-slate-800 pb-4">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   ⚙️ Thông Số Kỹ Thuật & Cấu Hình Hệ Thống
@@ -883,7 +918,7 @@ export function AdminDashboard() {
                 <p className="text-xs text-slate-400">Các thông số cấu hình hạ tầng backend, môi trường và giới hạn tài nguyên.</p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <InfoBox label="Môi Trường Chạy" value={config.app_env} />
                 <InfoBox label="Ứng Dụng" value={`${config.app_name} v${config.app_version}`} />
                 <InfoBox label="Model Đang Chạy" value={config.default_llm_model ?? "Chưa cấu hình"} />
@@ -1069,10 +1104,10 @@ function MetricCard({
   return (
     <div className={`border rounded-2xl p-3 flex flex-col justify-between ${colorStyles[color]}`}>
       <div className="flex items-center justify-between text-xs">
-        <span className="text-[11px] font-medium text-slate-400">{label}</span>
-        <span>{icon}</span>
+        <span className="text-[11px] font-medium text-slate-400 truncate">{label}</span>
+        <span className="shrink-0">{icon}</span>
       </div>
-      <div className="mt-2 text-base font-black tracking-tight text-white font-mono">
+      <div className="mt-2 text-sm sm:text-base font-black tracking-tight text-white font-mono truncate">
         {value.toLocaleString()}
       </div>
     </div>
@@ -1087,18 +1122,17 @@ function TokenBarChart({ inputTokens, outputTokens }: { inputTokens: number; out
   return (
     <div className="flex flex-col gap-4 py-2">
       <div className="flex flex-col gap-2">
-        <div className="flex justify-between text-xs font-semibold">
+        <div className="flex flex-col sm:flex-row justify-between text-xs font-semibold gap-1">
           <span className="text-indigo-400 flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
             Input Tokens: {inputTokens.toLocaleString()} ({inputPct}%)
           </span>
           <span className="text-purple-400 flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
             Output Tokens: {outputTokens.toLocaleString()} ({outputPct}%)
           </span>
         </div>
 
-        {/* Stacked Bar */}
         <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden flex p-0.5 border border-slate-800">
           <div
             style={{ width: `${Math.max(inputPct, 2)}%` }}
@@ -1132,7 +1166,6 @@ function UserDistributionDonut({
 
   return (
     <div className="flex flex-col gap-4 py-2 items-center">
-      {/* SVG Donut */}
       <div className="relative w-28 h-28 flex items-center justify-center">
         <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
           <path
@@ -1163,7 +1196,6 @@ function UserDistributionDonut({
         </div>
       </div>
 
-      {/* Legend list */}
       <div className="w-full flex flex-col gap-1.5 text-xs font-semibold">
         <div className="flex justify-between items-center text-emerald-400">
           <span className="flex items-center gap-1.5">
@@ -1195,7 +1227,7 @@ function InfoBox({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col gap-1">
       <span className="text-[11px] text-slate-400 font-medium">{label}</span>
-      <span className="text-xs font-bold text-white font-mono">{value}</span>
+      <span className="text-xs font-bold text-white font-mono break-all">{value}</span>
     </div>
   );
 }
