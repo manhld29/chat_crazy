@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { UserPublic, api } from "@/lib/api";
+import { ApiError, UserPublic, api } from "@/lib/api";
 
 const ACCESS_TOKEN_KEY = "chat_crazy_access_token";
 const USER_KEY = "chat_crazy_user";
@@ -44,17 +44,32 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
+    const handleUnauthorized = () => {
+      clearSession();
+      setAuthError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+    };
+
+    window.addEventListener("chat_crazy_unauthorized", handleUnauthorized);
+    return () => {
+      window.removeEventListener("chat_crazy_unauthorized", handleUnauthorized);
+    };
+  }, [clearSession]);
+
+  useEffect(() => {
     if (session?.accessToken) {
       api
         .me(session.accessToken)
         .then((updatedUser) => {
           saveSession(session.accessToken, updatedUser);
         })
-        .catch(() => {
-          // Keep local session if fetch fails
+        .catch((err: unknown) => {
+          if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+            clearSession();
+            setAuthError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+          }
         });
     }
-  }, [saveSession, session?.accessToken]);
+  }, [saveSession, session?.accessToken, clearSession]);
 
   const login = useCallback(
     async (email: string, pass: string) => {

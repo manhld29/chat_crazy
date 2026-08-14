@@ -175,6 +175,26 @@ export class ApiError extends Error {
   }
 }
 
+function handleUnauthorizedSession(path: string) {
+  if (
+    path.startsWith("/auth/login") ||
+    path.startsWith("/auth/register") ||
+    path.startsWith("/auth/guest") ||
+    path.startsWith("/auth/forgot-password") ||
+    path.startsWith("/auth/reset-password")
+  ) {
+    return;
+  }
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("chat_crazy_access_token");
+    localStorage.removeItem("chat_crazy_user");
+    window.dispatchEvent(new CustomEvent("chat_crazy_unauthorized"));
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+  }
+}
+
 type RequestOptions = {
   token?: string | null;
   method?: string;
@@ -199,13 +219,22 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
     try {
-      const payload = (await response.json()) as { detail?: unknown };
+      const payload = (await response.json()) as { detail?: unknown; message?: unknown };
       if (typeof payload.detail === "string") {
         message = payload.detail;
+      } else if (typeof payload.message === "string") {
+        message = payload.message;
+      } else if (Array.isArray(payload.message)) {
+        message = payload.message.join(", ");
       }
     } catch {
       // Keep generic message.
     }
+
+    if (response.status === 401 || response.status === 403) {
+      handleUnauthorizedSession(path);
+    }
+
     throw new ApiError(`${message} (${path})`, response.status);
   }
   if (response.status === 204) {
@@ -236,13 +265,22 @@ async function streamRequest(
   if (!response.ok || !response.body) {
     let message = `Request failed with status ${response.status}`;
     try {
-      const payload = (await response.json()) as { detail?: unknown };
+      const payload = (await response.json()) as { detail?: unknown; message?: unknown };
       if (typeof payload.detail === "string") {
         message = payload.detail;
+      } else if (typeof payload.message === "string") {
+        message = payload.message;
+      } else if (Array.isArray(payload.message)) {
+        message = payload.message.join(", ");
       }
     } catch {
       // Keep generic message.
     }
+
+    if (response.status === 401 || response.status === 403) {
+      handleUnauthorizedSession(path);
+    }
+
     throw new ApiError(message, response.status);
   }
 
