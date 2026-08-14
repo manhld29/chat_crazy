@@ -6,17 +6,28 @@ import { URL } from "url";
 import { LLMRequest, LLMUsage } from "./llm.types";
 
 export const DEFAULT_FREE_MODEL_POOL = [
+  "openrouter/free",
   "meta-llama/llama-3.3-70b-instruct:free",
   "google/gemini-2.0-flash-exp:free",
   "deepseek/deepseek-chat:free",
   "deepseek/deepseek-r1:free",
+  "google/gemma-4-31b-it:free",
+  "google/gemma-4-26b-a4b-it:free",
   "qwen/qwen-2.5-coder-32b-instruct:free",
   "mistralai/mistral-7b-instruct:free",
+  "nvidia/nemotron-3.5-lightning:free",
+  "openai/gpt-oss-20b:free",
+  "cohere/north-mini-code:free",
+  "liquid/lfm-2.5-2.6b:free",
   "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",
 ] as const;
 
 export const OPENROUTER_FREE_MODELS = [
+  {
+    id: "openrouter/free",
+    name: "OpenRouter Auto Free Router",
+  },
   {
     id: "meta-llama/llama-3.3-70b-instruct:free",
     name: "Meta Llama 3.3 70B Instruct (Free)",
@@ -26,12 +37,20 @@ export const OPENROUTER_FREE_MODELS = [
     name: "Google Gemini 2.0 Flash (Free)",
   },
   {
+    id: "deepseek/deepseek-chat:free",
+    name: "DeepSeek V3 (Free)",
+  },
+  {
     id: "deepseek/deepseek-r1:free",
     name: "DeepSeek R1 Reasoning (Free)",
   },
   {
-    id: "deepseek/deepseek-chat:free",
-    name: "DeepSeek V3 (Free)",
+    id: "google/gemma-4-31b-it:free",
+    name: "Google Gemma 4 31B (Free)",
+  },
+  {
+    id: "google/gemma-4-26b-a4b-it:free",
+    name: "Google Gemma 4 26B (Free)",
   },
   {
     id: "qwen/qwen-2.5-coder-32b-instruct:free",
@@ -40,6 +59,22 @@ export const OPENROUTER_FREE_MODELS = [
   {
     id: "mistralai/mistral-7b-instruct:free",
     name: "Mistral 7B Instruct (Free)",
+  },
+  {
+    id: "nvidia/nemotron-3.5-lightning:free",
+    name: "NVIDIA Nemotron 3.5 Lightning (Free)",
+  },
+  {
+    id: "openai/gpt-oss-20b:free",
+    name: "OpenAI GPT OSS 20B (Free)",
+  },
+  {
+    id: "cohere/north-mini-code:free",
+    name: "Cohere North Mini Code (Free)",
+  },
+  {
+    id: "liquid/lfm-2.5-2.6b:free",
+    name: "LiquidAI LFM 2.5 2.6B (Free)",
   },
 ] as const;
 

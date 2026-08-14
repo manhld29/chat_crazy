@@ -18,8 +18,7 @@ export default () => ({
   tavilyApiKey:
     process.env.TAVILY_API_KEY ||
     "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",
-  defaultLlmModel:
-    process.env.DEFAULT_LLM_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
+  defaultLlmModel: process.env.DEFAULT_LLM_MODEL || "openrouter/free",
   cheapLlmModel: process.env.CHEAP_LLM_MODEL || "llama-3.1-8b-instant",
   fallbackLlmModel: process.env.FALLBACK_LLM_MODEL || "llama-3.1-8b-instant",
   llmTimeoutSeconds: parseInt(process.env.LLM_TIMEOUT_SECONDS || "30", 10),
