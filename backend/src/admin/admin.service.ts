@@ -10,7 +10,14 @@ import { AuthService } from "../auth/auth.service";
 import { OPENROUTER_FREE_MODELS } from "../llm/groq-llm.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
-import { AdminLoginDto, UpdateModelConfigDto, UpdateUserLimitDto } from "./dto/admin.dto";
+import {
+  AdminLoginDto,
+  CreateAdminAccountDto,
+  UpdateModelConfigDto,
+  UpdateUserLimitDto,
+  UpdateUserRoleDto,
+  UpdateUserStatusDto,
+} from "./dto/admin.dto";
 
 @Injectable()
 export class AdminService {
@@ -113,9 +120,10 @@ export class AdminService {
     const isManualMode = modeSetting?.value === "true";
     const manualModel = modelSetting?.value;
 
-    const currentActiveModel = isManualMode && manualModel
-      ? `${manualModel} (Cấu hình thủ công)`
-      : `${this.configService.get("defaultLlmModel", "openrouter/free")} (Tự động Pool)`;
+    const currentActiveModel =
+      isManualMode && manualModel
+        ? `${manualModel} (Cấu hình thủ công)`
+        : `${this.configService.get("defaultLlmModel", "openrouter/free")} (Tự động Pool)`;
 
     return {
       app_env: this.configService.get("appEnv", "development"),
@@ -246,9 +254,11 @@ export class AdminService {
       return {
         user_id: u.id,
         email: u.email,
+        username: u.username,
         display_name: u.display_name || "Người dùng",
         is_guest: u.is_guest,
         is_active: u.is_active,
+        is_admin: u.is_admin,
         daily_message_limit: u.daily_message_limit,
         conversations: u._count.conversations,
         messages_today: messagesToday,
@@ -317,9 +327,11 @@ export class AdminService {
     return {
       user_id: updated.id,
       email: updated.email,
+      username: updated.username,
       display_name: updated.display_name || "Người dùng",
       is_guest: updated.is_guest,
       is_active: updated.is_active,
+      is_admin: updated.is_admin,
       daily_message_limit: updated.daily_message_limit,
       conversations: conversationsCount,
       messages_today: messagesToday,
@@ -330,5 +342,116 @@ export class AdminService {
         : null,
       created_at: updated.created_at.toISOString(),
     };
+  }
+
+  async updateUserStatus(
+    currentUser: User,
+    targetUserId: string,
+    dto: UpdateUserStatusDto,
+  ) {
+    if (!currentUser.is_admin) {
+      throw new ForbiddenException("Admin access required");
+    }
+    if (currentUser.id === targetUserId) {
+      throw new ForbiddenException(
+        "Không thể tự thay đổi trạng thái hoạt động tài khoản của chính mình",
+      );
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+    if (!targetUser) {
+      throw new NotFoundException("User not found");
+    }
+
+    await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { is_active: dto.is_active },
+    });
+
+    return this.getAdminAccounts(currentUser);
+  }
+
+  async updateUserRole(
+    currentUser: User,
+    targetUserId: string,
+    dto: UpdateUserRoleDto,
+  ) {
+    if (!currentUser.is_admin) {
+      throw new ForbiddenException("Admin access required");
+    }
+    if (currentUser.id === targetUserId && !dto.is_admin) {
+      throw new ForbiddenException(
+        "Không thể tự gỡ quyền Admin của chính mình",
+      );
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+    if (!targetUser) {
+      throw new NotFoundException("User not found");
+    }
+
+    await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { is_admin: dto.is_admin },
+    });
+
+    return this.getAdminAccounts(currentUser);
+  }
+
+  async createAdminAccount(currentUser: User, dto: CreateAdminAccountDto) {
+    if (!currentUser.is_admin) {
+      throw new ForbiddenException("Admin access required");
+    }
+
+    const existingEmail = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: dto.email }, { username: dto.username }],
+      },
+    });
+    if (existingEmail) {
+      throw new ForbiddenException("Email hoặc Username đã được sử dụng");
+    }
+
+    const password_hash = await this.authService.hashPassword(dto.password);
+
+    await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        username: dto.username,
+        password_hash,
+        display_name: dto.display_name || dto.username,
+        is_guest: false,
+        is_active: true,
+        is_admin: true,
+      },
+    });
+
+    return this.getAdminAccounts(currentUser);
+  }
+
+  async deleteUserAccount(currentUser: User, targetUserId: string) {
+    if (!currentUser.is_admin) {
+      throw new ForbiddenException("Admin access required");
+    }
+    if (currentUser.id === targetUserId) {
+      throw new ForbiddenException("Không thể tự xóa tài khoản của chính mình");
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+    if (!targetUser) {
+      throw new NotFoundException("User not found");
+    }
+
+    await this.prisma.user.delete({
+      where: { id: targetUserId },
+    });
+
+    return this.getAdminAccounts(currentUser);
   }
 }

@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Min } from "class-validator";
+import { IsBoolean, IsEmail, IsInt, IsNotEmpty, IsOptional, IsString, Min } from "class-validator";
 
 export class AdminLoginDto {
   @IsString()
@@ -25,4 +25,34 @@ export class UpdateModelConfigDto {
   @IsString()
   @IsOptional()
   selected_model?: string;
+}
+
+export class UpdateUserStatusDto {
+  @IsBoolean()
+  @IsNotEmpty()
+  is_active: boolean;
+}
+
+export class UpdateUserRoleDto {
+  @IsBoolean()
+  @IsNotEmpty()
+  is_admin: boolean;
+}
+
+export class CreateAdminAccountDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  username: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+
+  @IsString()
+  @IsOptional()
+  display_name?: string;
 }

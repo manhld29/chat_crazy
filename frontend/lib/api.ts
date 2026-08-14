@@ -146,9 +146,11 @@ export type AdminDashboardResponse = {
 export type AdminAccountUsage = {
   user_id: string;
   email: string | null;
+  username: string | null;
   display_name: string;
   is_guest: boolean;
   is_active: boolean;
+  is_admin: boolean;
   daily_message_limit: number | null;
   conversations: number;
   messages_today: number;
@@ -432,5 +434,31 @@ export const api = {
       token,
       method: "PATCH",
       body: { manual_mode: manualMode, selected_model: selectedModel },
+    }),
+  updateAdminUserStatus: (token: string, userId: string, isActive: boolean) =>
+    request<AdminAccountsResponse>(`/admin/users/${userId}/status`, {
+      token,
+      method: "PATCH",
+      body: { is_active: isActive },
+    }),
+  updateAdminUserRole: (token: string, userId: string, isAdmin: boolean) =>
+    request<AdminAccountsResponse>(`/admin/users/${userId}/role`, {
+      token,
+      method: "PATCH",
+      body: { is_admin: isAdmin },
+    }),
+  createAdminAccount: (
+    token: string,
+    body: { email: string; username: string; password: string; display_name?: string },
+  ) =>
+    request<AdminAccountsResponse>("/admin/create-admin", {
+      token,
+      method: "POST",
+      body,
+    }),
+  deleteAdminUserAccount: (token: string, userId: string) =>
+    request<AdminAccountsResponse>(`/admin/users/${userId}`, {
+      token,
+      method: "DELETE",
     }),
 };

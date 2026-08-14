@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -17,7 +18,14 @@ import { Request, Response } from "express";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { AdminService } from "./admin.service";
-import { AdminLoginDto, UpdateModelConfigDto, UpdateUserLimitDto } from "./dto/admin.dto";
+import {
+  AdminLoginDto,
+  CreateAdminAccountDto,
+  UpdateModelConfigDto,
+  UpdateUserLimitDto,
+  UpdateUserRoleDto,
+  UpdateUserStatusDto,
+} from "./dto/admin.dto";
 
 @Controller("admin")
 export class AdminController {
@@ -106,5 +114,43 @@ export class AdminController {
     @Body() dto: UpdateUserLimitDto,
   ) {
     return this.adminService.updateUserLimit(user, userId, dto);
+  }
+
+  @Patch("users/:userId/status")
+  @UseGuards(JwtAuthGuard)
+  updateUserStatus(
+    @CurrentUser() user: User,
+    @Param("userId") userId: string,
+    @Body() dto: UpdateUserStatusDto,
+  ) {
+    return this.adminService.updateUserStatus(user, userId, dto);
+  }
+
+  @Patch("users/:userId/role")
+  @UseGuards(JwtAuthGuard)
+  updateUserRole(
+    @CurrentUser() user: User,
+    @Param("userId") userId: string,
+    @Body() dto: UpdateUserRoleDto,
+  ) {
+    return this.adminService.updateUserRole(user, userId, dto);
+  }
+
+  @Post("create-admin")
+  @UseGuards(JwtAuthGuard)
+  createAdminAccount(
+    @CurrentUser() user: User,
+    @Body() dto: CreateAdminAccountDto,
+  ) {
+    return this.adminService.createAdminAccount(user, dto);
+  }
+
+  @Delete("users/:userId")
+  @UseGuards(JwtAuthGuard)
+  deleteUserAccount(
+    @CurrentUser() user: User,
+    @Param("userId") userId: string,
+  ) {
+    return this.adminService.deleteUserAccount(user, userId);
   }
 }
