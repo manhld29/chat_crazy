@@ -9,10 +9,11 @@ import { ConfigService } from "@nestjs/config";
 import { User } from "@prisma/client";
 import { ConversationsService } from "../conversations/conversations.service";
 import { GroqLlmService } from "../llm/groq-llm.service";
-import { LLMMessage } from "../llm/llm.types";
+import { LLMMessage, LLMTool } from "../llm/llm.types";
 import { ContextBuilderService } from "../memory/context-builder.service";
 import { MetricsService } from "../observability/metrics.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { WebSearchService } from "../search/web-search.service";
 import { UsageService } from "../usage/usage.service";
 import { ChatStreamDto } from "./dto/chat-stream.dto";
 import { SafetyService } from "./safety.service";
@@ -30,6 +31,7 @@ export class ChatService {
     private readonly usageService: UsageService,
     private readonly safetyService: SafetyService,
     private readonly metricsService: MetricsService,
+    private readonly webSearchService: WebSearchService,
   ) {}
 
   async *streamMessage(user: User, conversationId: string, dto: ChatStreamDto) {
@@ -65,6 +67,9 @@ export class ChatService {
     if (conv.ai_nickname) {
       systemPrompt += `\nBiệt danh do người dùng đặt cho bạn trong cuộc trò chuyện này là "${conv.ai_nickname}". Hãy tự nhận biệt danh này khi giao tiếp và xưng hô tự nhiên.`;
     }
+
+    // Add search tool instructions
+    systemPrompt += `\n\nBạn có khả năng tìm kiếm Google thông qua công cụ google_search. Khi người dùng hỏi thông tin thực tế, tin tức mới, thời tiết, sự kiện, giá cả hoặc bất kỳ thông tin nào bạn không chắc chắn/thiếu dữ liệu, bạn PHẢI dùng tool google_search để tra cứu thông tin. Khi trả lời có thông tin tìm kiếm, BẮT BUỘC phải đính kèm các đường dẫn tham khảo dưới dạng Markdown: [Tên bài viết](URL).`;
 
     // Create user message
     const userMsg = await this.prisma.message.create({
@@ -144,12 +149,105 @@ export class ChatService {
       { role: "user", content: dto.content },
     ];
 
+    const googleSearchTool: LLMTool = {
+      type: "function",
+      function: {
+        name: "google_search",
+        description:
+          "Tìm kiếm thông tin trên Google khi cần dữ liệu mới nhất, thực tế, sự kiện, giá cả, thời tiết hoặc thông tin bạn không chắc chắn.",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "Từ khóa tra cứu trên Google",
+            },
+          },
+          required: ["query"],
+        },
+      },
+    };
+
     let fullAssistantResponse = "";
     let inputTokens = 0;
     let outputTokens = 0;
     const startTime = Date.now();
 
     try {
+      // Step 1: Check if tool call is requested or query needs search
+      let searchQuery = "";
+
+      try {
+        const initialRes = await this.groqLlmService.createCompletion({
+          model: modelName,
+          messages: llmMessages,
+          tools: [googleSearchTool],
+          temperature: 0.2,
+          max_tokens: 300,
+        });
+
+        const toolCall = initialRes?.choices?.[0]?.message?.tool_calls?.[0];
+        if (toolCall && toolCall.function?.name === "google_search") {
+          try {
+            const args =
+              typeof toolCall.function.arguments === "string"
+                ? JSON.parse(toolCall.function.arguments)
+                : toolCall.function.arguments;
+            if (args?.query) {
+              searchQuery = args.query;
+            }
+          } catch {
+            searchQuery = dto.content;
+          }
+        }
+      } catch (err: any) {
+        this.logger.debug(
+          `Tool call check non-streaming failed, fallback check: ${err.message}`,
+        );
+      }
+
+      // Explicit query intention check fallback
+      const isSearchIntent =
+        searchQuery !== "" ||
+        /hôm nay|mới nhất|tin tức|thời tiết|ở đâu|giá bao nhiêu|search|tìm kiếm|tra cứu|ai là|lịch sử|kết quả|năm 202[4-9]/i.test(
+          dto.content,
+        );
+
+      if (isSearchIntent) {
+        if (!searchQuery) searchQuery = dto.content;
+
+        const searchingText = `🔍 *Đang tìm kiếm thông tin trên Google cho: "${searchQuery}"...*\n\n`;
+        fullAssistantResponse += searchingText;
+        yield `event: message.delta\ndata: ${JSON.stringify({
+          id: assistantMsg.id,
+          delta: searchingText,
+        })}\n\n`;
+
+        const searchResults = await this.webSearchService.search(
+          searchQuery,
+          5,
+        );
+
+        if (searchResults.length > 0) {
+          let contextStr = `\n\n[KẾT QUẢ TÌM KIẾM GOOGLE CHO: "${searchQuery}"]\n`;
+          searchResults.forEach((r, idx) => {
+            contextStr += `Nguồn ${idx + 1}:\n- Tiêu đề: ${r.title}\n- Link: ${r.url}\n- Nội dung: ${r.snippet}\n\n`;
+          });
+          contextStr += `Hãy tổng hợp câu trả lời đầy đủ, chính xác dựa trên thông tin trên. Cuối bài BẮT BUỘC đính kèm danh sách "Nguồn tham khảo:" với các link Markdown dạng [Tiêu đề trang](URL).`;
+
+          llmMessages.push({
+            role: "system",
+            content: contextStr,
+          });
+        } else {
+          llmMessages.push({
+            role: "system",
+            content: `Không tìm thấy kết quả tìm kiếm trực tiếp cho từ khóa "${searchQuery}". Hãy trả lời dựa trên kiến thức hiện có và thành thật ghi nhận nếu thông tin chưa đầy đủ.`,
+          });
+        }
+      }
+
+      // Step 2: Stream completion
       const generator = this.groqLlmService.streamCompletion({
         model: modelName,
         messages: llmMessages,
@@ -214,7 +312,9 @@ export class ChatService {
       yield `event: usage.updated\ndata: ${JSON.stringify(usageInfo)}\n\n`;
 
       yield `event: conversation.updated\ndata: ${JSON.stringify({
-        conversation: this.conversationsService.formatConversation(updatedConv),
+        conversation: this.conversationsService.formatConversation(
+          updatedConv,
+        ),
       })}\n\n`;
 
       yield `event: done\ndata: {}\n\n`;

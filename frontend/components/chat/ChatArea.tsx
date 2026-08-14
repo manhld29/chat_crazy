@@ -19,6 +19,69 @@ type ChatAreaProps = {
   onChangeAiNickname?: (nickname: string) => void;
 };
 
+function FormattedMessageContent({ content }: { content: string }) {
+  if (!content) return null;
+
+  const lines = content.split("\n");
+
+  return (
+    <div className="space-y-1.5 whitespace-pre-wrap break-words">
+      {lines.map((line, lineIdx) => {
+        const parts: React.ReactNode[] = [];
+        const markdownLinkRegex =
+          /\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)|(https?:\/\/[^\s\)]+)/g;
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
+
+        while ((match = markdownLinkRegex.exec(line)) !== null) {
+          if (match.index > lastIndex) {
+            parts.push(line.substring(lastIndex, match.index));
+          }
+
+          if (match[1] && match[2]) {
+            const linkText = match[1];
+            const url = match[2];
+            parts.push(
+              <a
+                key={`${lineIdx}-${match.index}`}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 text-emerald-400 hover:text-emerald-300 underline font-medium transition-colors break-all"
+              >
+                <span>{linkText}</span>
+                <span className="text-[10px] opacity-75">↗</span>
+              </a>,
+            );
+          } else if (match[3]) {
+            const url = match[3];
+            parts.push(
+              <a
+                key={`${lineIdx}-${match.index}`}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 text-emerald-400 hover:text-emerald-300 underline font-medium transition-colors break-all"
+              >
+                <span>{url}</span>
+                <span className="text-[10px] opacity-75">↗</span>
+              </a>,
+            );
+          }
+
+          lastIndex = markdownLinkRegex.lastIndex;
+        }
+
+        if (lastIndex < line.length) {
+          parts.push(line.substring(lastIndex));
+        }
+
+        return <div key={lineIdx}>{parts.length > 0 ? parts : line}</div>;
+      })}
+    </div>
+  );
+}
+
 export function ChatArea({
   activeConversation,
   personalities,
@@ -196,7 +259,7 @@ export function ChatArea({
                       : "bg-slate-900 text-slate-200 border border-slate-800 rounded-tl-none"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  <FormattedMessageContent content={msg.content} />
                   {msg.latency_ms && (
                     <span className="text-[10px] text-slate-400 self-end mt-1">
                       {msg.latency_ms}ms

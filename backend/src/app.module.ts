@@ -18,6 +18,7 @@ import { UsageModule } from "./usage/usage.module";
 import { UsersModule } from "./users/users.module";
 
 import { MailModule } from "./mail/mail.module";
+import { SearchModule } from "./search/search.module";
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { MailModule } from "./mail/mail.module";
     PrismaModule,
     RedisModule,
     MailModule,
+    SearchModule,
     AuthModule,
     UsersModule,
     PersonalitiesModule,

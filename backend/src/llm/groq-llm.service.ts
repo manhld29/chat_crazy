@@ -11,6 +11,80 @@ export class GroqLlmService {
 
   constructor(private readonly configService: ConfigService) {}
 
+  async createCompletion(req: LLMRequest): Promise<any> {
+    const apiKey = this.configService.get<string>("groqApiKey");
+    const baseUrl = this.configService.get<string>(
+      "groqBaseUrl",
+      "https://api.groq.com/openai/v1",
+    );
+
+    if (!apiKey) {
+      return {
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: `Mock mode completion for: ${req.messages[req.messages.length - 1]?.content || ""}`,
+            },
+          },
+        ],
+      };
+    }
+
+    const endpoint = `${baseUrl}/chat/completions`;
+    const url = new URL(endpoint);
+
+    const bodyObj: any = {
+      model: req.model,
+      messages: req.messages,
+      temperature: req.temperature ?? 0.7,
+      max_tokens: req.max_tokens ?? 1024,
+      stream: false,
+    };
+
+    if (req.tools && req.tools.length > 0) {
+      bodyObj.tools = req.tools;
+      if (req.tool_choice) bodyObj.tool_choice = req.tool_choice;
+    }
+
+    const requestBody = JSON.stringify(bodyObj);
+
+    const isHttps = url.protocol === "https:";
+    const httpLib = isHttps ? https : http;
+
+    const requestOptions = {
+      method: "POST",
+      hostname: url.hostname,
+      port: url.port || (isHttps ? 443 : 80),
+      path: url.pathname + url.search,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Length": Buffer.byteLength(requestBody),
+      },
+    };
+
+    const res: http.IncomingMessage = await new Promise((resolve, reject) => {
+      const clientReq = httpLib.request(requestOptions, (res) => resolve(res));
+      clientReq.on("error", (err) => reject(err));
+      clientReq.write(requestBody);
+      clientReq.end();
+    });
+
+    let resText = "";
+    for await (const chunk of res) {
+      resText += chunk.toString();
+    }
+
+    if (res.statusCode && res.statusCode >= 400) {
+      throw new Error(
+        `Groq LLM API returned status ${res.statusCode}: ${resText}`,
+      );
+    }
+
+    return JSON.parse(resText);
+  }
+
   async *streamCompletion(
     req: LLMRequest,
   ): AsyncGenerator<{ delta: string; usage?: LLMUsage }, void, unknown> {
@@ -45,13 +119,20 @@ export class GroqLlmService {
     const endpoint = `${baseUrl}/chat/completions`;
     const url = new URL(endpoint);
 
-    const requestBody = JSON.stringify({
+    const bodyObj: any = {
       model: req.model,
       messages: req.messages,
       temperature: req.temperature ?? 0.7,
       max_tokens: req.max_tokens ?? 1024,
       stream: true,
-    });
+    };
+
+    if (req.tools && req.tools.length > 0) {
+      bodyObj.tools = req.tools;
+      if (req.tool_choice) bodyObj.tool_choice = req.tool_choice;
+    }
+
+    const requestBody = JSON.stringify(bodyObj);
 
     const isHttps = url.protocol === "https:";
     const httpLib = isHttps ? https : http;

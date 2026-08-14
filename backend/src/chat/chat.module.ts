@@ -8,6 +8,8 @@ import { ChatController } from "./chat.controller";
 import { ChatService } from "./chat.service";
 import { SafetyService } from "./safety.service";
 
+import { SearchModule } from "../search/search.module";
+
 @Module({
   imports: [
     ConversationsModule,
@@ -15,6 +17,7 @@ import { SafetyService } from "./safety.service";
     MemoryModule,
     UsageModule,
     ObservabilityModule,
+    SearchModule,
   ],
   controllers: [ChatController],
   providers: [ChatService, SafetyService],
