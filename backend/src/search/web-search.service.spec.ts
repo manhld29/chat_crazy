@@ -9,6 +9,7 @@ describe("WebSearchService", () => {
     get: jest.fn((key: string): any => {
       if (key === "googleSearchApiKey") return "test-api-key";
       if (key === "googleSearchCx") return "test-cx";
+      if (key === "tinyfishApiKey") return "test-tinyfish-key";
       return null;
     }),
   };
@@ -59,9 +60,41 @@ describe("WebSearchService", () => {
       });
     });
 
-    it("should fallback gracefully if Google API fails or is unconfigured", async () => {
+    it("should return TinyFish API search results when Google Search is unconfigured", async () => {
       mockConfigService.get.mockImplementation((key: string): any => {
         if (key === "googleSearchApiKey") return "";
+        if (key === "tinyfishApiKey") return "test-tinyfish-key";
+        return null;
+      });
+
+      const mockTinyFishResponse = {
+        query: "Thời tiết Hà Nội",
+        results: [
+          {
+            title: "TinyFish Search Result",
+            snippet: "Accurate web automation snippet",
+            url: "https://tinyfish.ai/result",
+          },
+        ],
+      };
+
+      jest.spyOn(service as any, "fetchTinyFishSearch").mockResolvedValue([
+        {
+          title: mockTinyFishResponse.results[0].title,
+          snippet: mockTinyFishResponse.results[0].snippet,
+          url: mockTinyFishResponse.results[0].url,
+        },
+      ]);
+
+      const results = await service.search("Thời tiết Hà Nội");
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe("TinyFish Search Result");
+    });
+
+    it("should fallback gracefully if Google API and TinyFish API fail or are unconfigured", async () => {
+      mockConfigService.get.mockImplementation((key: string): any => {
+        if (key === "googleSearchApiKey") return "";
+        if (key === "tinyfishApiKey") return "";
         return null;
       });
 

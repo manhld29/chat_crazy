@@ -13,6 +13,7 @@ export default () => ({
   groqBaseUrl: process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1",
   googleSearchApiKey: process.env.GOOGLE_SEARCH_API_KEY || "",
   googleSearchCx: process.env.GOOGLE_SEARCH_CX || "",
+  tinyfishApiKey: process.env.TINYFISH_API_KEY || "",
   defaultLlmModel: process.env.DEFAULT_LLM_MODEL || "llama-3.3-70b-versatile",
   cheapLlmModel: process.env.CHEAP_LLM_MODEL || "llama-3.1-8b-instant",
   fallbackLlmModel: process.env.FALLBACK_LLM_MODEL || "llama-3.1-8b-instant",

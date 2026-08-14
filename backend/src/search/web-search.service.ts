@@ -19,7 +19,9 @@ export class WebSearchService {
   async search(query: string, numResults: number = 5): Promise<SearchResult[]> {
     const apiKey = this.configService.get<string>("googleSearchApiKey");
     const cx = this.configService.get<string>("googleSearchCx");
+    const tinyfishKey = this.configService.get<string>("tinyfishApiKey");
 
+    // Tier 1: Google Custom Search API
     if (apiKey && cx) {
       try {
         const rawResponse = await this.fetchGoogleCustomSearch(
@@ -47,12 +49,30 @@ export class WebSearchService {
         }
       } catch (err: any) {
         this.logger.warn(
-          `Google Custom Search API failed: ${err.message}. Falling back to search engine parser.`,
+          `Google Custom Search API failed: ${err.message}. Falling back to next search provider.`,
         );
       }
     }
 
-    // Tier 2: Fallback search engine (DuckDuckGo Lite POST with full browser headers)
+    // Tier 2: TinyFish Search API
+    if (tinyfishKey) {
+      try {
+        const tfResults = await this.fetchTinyFishSearch(
+          query,
+          tinyfishKey,
+          numResults,
+        );
+        if (tfResults && tfResults.length > 0) {
+          return tfResults;
+        }
+      } catch (err: any) {
+        this.logger.warn(
+          `TinyFish Search API failed: ${err.message}. Falling back to DuckDuckGo search.`,
+        );
+      }
+    }
+
+    // Tier 3: DuckDuckGo Lite POST with full browser headers
     try {
       const ddgResults = await this.fallbackSearch(query, numResults);
       if (ddgResults && ddgResults.length > 0) {
@@ -62,7 +82,7 @@ export class WebSearchService {
       this.logger.warn(`DuckDuckGo fallback search failed: ${err.message}`);
     }
 
-    // Tier 3: Wikipedia Open Search API fallback
+    // Tier 4: Wikipedia Open Search API fallback
     try {
       const wikiResults = await this.wikipediaSearch(query, numResults);
       if (wikiResults && wikiResults.length > 0) {
@@ -86,6 +106,32 @@ export class WebSearchService {
 
     const responseText = await this.httpGet(searchUrl);
     return JSON.parse(responseText);
+  }
+
+  private async fetchTinyFishSearch(
+    query: string,
+    apiKey: string,
+    numResults: number = 5,
+  ): Promise<SearchResult[]> {
+    const searchUrl = `https://api.search.tinyfish.ai?query=${encodeURIComponent(
+      query,
+    )}`;
+    const responseText = await this.httpGet(searchUrl, {
+      "X-API-Key": apiKey,
+    });
+    const parsed = JSON.parse(responseText);
+
+    if (parsed && Array.isArray(parsed.results)) {
+      return parsed.results
+        .slice(0, numResults)
+        .map((item: any) => ({
+          title: this.cleanText(item.title || item.site_name || "TinyFish Search"),
+          snippet: this.cleanText(item.snippet || ""),
+          url: this.sanitizeUrl(item.url || ""),
+        }))
+        .filter((res: SearchResult) => res.url !== "");
+    }
+    return [];
   }
 
   private async fallbackSearch(
