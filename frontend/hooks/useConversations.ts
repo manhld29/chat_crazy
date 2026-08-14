@@ -86,12 +86,13 @@ export function useConversations(token: string | null, initialConvId?: string) {
   }, [token, showArchived, activeConvId, initialConvId]);
 
   const createConversation = useCallback(
-    async (personalityCode = "friendly", firstMessage?: string) => {
+    async (personalityCode = "friendly", firstMessage?: string, aiNickname?: string) => {
       if (!token) return null;
       try {
         const created = await api.createConversation(token, {
           personality_code: personalityCode,
           first_message: firstMessage,
+          ai_nickname: aiNickname,
         });
         setConversations((prev) => [created, ...prev]);
         setActiveConvId(created.id);
@@ -134,7 +135,7 @@ export function useConversations(token: string | null, initialConvId?: string) {
   );
 
   const updateConversation = useCallback(
-    async (id: string, data: { title?: string; personality_code?: string }) => {
+    async (id: string, data: { title?: string; personality_code?: string; ai_nickname?: string }) => {
       if (!token) return;
       const updated = await api.updateConversation(token, id, data);
       setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));

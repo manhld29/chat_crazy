@@ -12,6 +12,10 @@ export class CreateConversationDto {
   @IsString()
   @IsOptional()
   personality_code?: string;
+
+  @IsString()
+  @IsOptional()
+  ai_nickname?: string;
 }
 
 export class UpdateConversationDto {
@@ -22,4 +26,8 @@ export class UpdateConversationDto {
   @IsString()
   @IsOptional()
   personality_code?: string;
+
+  @IsString()
+  @IsOptional()
+  ai_nickname?: string;
 }

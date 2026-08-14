@@ -78,6 +78,7 @@ model Conversation {
   user_id          String    @db.Uuid
   personality_code String    @default("friendly")
   title            String    @default("Cuộc trò chuyện mới")
+  ai_nickname      String?
   summary          String?
   summary_version  Int       @default(0)
   last_message_at  DateTime  @default(now()) @db.Timestamptz

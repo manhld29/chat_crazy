@@ -43,6 +43,7 @@ export type Conversation = {
   id: string;
   title: string;
   personality_code: string;
+  ai_nickname?: string | null;
   summary: string | null;
   summary_version: number;
   last_message_at: string;
@@ -329,12 +330,12 @@ export const api = {
     ),
   createConversation: (
     token: string,
-    body: { title?: string; first_message?: string; personality_code?: string },
+    body: { title?: string; first_message?: string; personality_code?: string; ai_nickname?: string },
   ) => request<Conversation>("/conversations", { token, method: "POST", body }),
   updateConversation: (
     token: string,
     id: string,
-    body: { title?: string; personality_code?: string },
+    body: { title?: string; personality_code?: string; ai_nickname?: string },
   ) => request<Conversation>(`/conversations/${id}`, { token, method: "PATCH", body }),
   archiveConversation: (token: string, id: string) =>
     request<Conversation>(`/conversations/${id}/archive`, { token, method: "POST" }),

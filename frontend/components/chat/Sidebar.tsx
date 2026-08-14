@@ -176,7 +176,14 @@ export function Sidebar({
                         autoFocus
                       />
                     ) : (
-                      <span className="truncate pr-12">{conv.title}</span>
+                      <div className="flex flex-col min-w-0 pr-12">
+                        <span className="truncate">{conv.title}</span>
+                        {conv.ai_nickname && (
+                          <span className="text-[10px] text-emerald-400/90 truncate font-normal">
+                            🤖 {conv.ai_nickname}
+                          </span>
+                        )}
+                      </div>
                     )}
 
                     {/* Action buttons on hover */}

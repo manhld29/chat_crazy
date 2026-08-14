@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Conversation, Message, Personality } from "@/lib/api";
 import { BackgroundTemplate, backgroundTemplates } from "@/hooks/useConversations";
 
@@ -16,6 +16,7 @@ type ChatAreaProps = {
   currentBackground: BackgroundTemplate;
   onChangeBackground: (bg: BackgroundTemplate) => void;
   onChangePersonality: (code: string) => void;
+  onChangeAiNickname?: (nickname: string) => void;
 };
 
 export function ChatArea({
@@ -30,8 +31,11 @@ export function ChatArea({
   currentBackground,
   onChangeBackground,
   onChangePersonality,
+  onChangeAiNickname,
 }: ChatAreaProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [isEditingNickname, setIsEditingNickname] = useState(false);
+  const [tempNickname, setTempNickname] = useState("");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,25 +56,75 @@ export function ChatArea({
   }
 
   const bgClasses: Record<BackgroundTemplate, string> = {
-    mint: "bg-slate-950",
-    sky: "bg-slate-950",
-    sunrise: "bg-slate-950",
-    paper: "bg-slate-950",
+    mint: "bg-gradient-to-br from-emerald-950/80 via-slate-950 to-teal-950/90",
+    sky: "bg-gradient-to-br from-slate-950 via-sky-950/70 to-indigo-950/90",
+    sunrise: "bg-gradient-to-br from-slate-950 via-purple-950/70 to-rose-950/80",
+    paper: "bg-gradient-to-br from-stone-950 via-amber-950/40 to-slate-950",
     slate: "bg-slate-950",
+  };
+
+  const aiDisplayName = activeConversation.ai_nickname || "AI";
+
+  const handleSaveNickname = () => {
+    if (onChangeAiNickname) {
+      onChangeAiNickname(tempNickname.trim());
+    }
+    setIsEditingNickname(false);
   };
 
   return (
     <div className={`flex-1 flex flex-col h-full overflow-hidden ${bgClasses[currentBackground]}`}>
       {/* Top Header */}
-      <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <h1 className="font-semibold text-slate-100 text-sm tracking-tight truncate max-w-md">
+      <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur flex items-center justify-between z-10 gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <h1 className="font-semibold text-slate-100 text-sm tracking-tight truncate max-w-xs md:max-w-md">
             {activeConversation.title}
           </h1>
+
+          {/* AI Nickname Badge & Quick Edit */}
+          <div className="flex items-center">
+            {isEditingNickname ? (
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={tempNickname}
+                  onChange={(e) => setTempNickname(e.target.value)}
+                  placeholder="Đặt biệt danh AI..."
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveNickname()}
+                  className="bg-slate-950 text-white text-xs px-2.5 py-1 rounded-lg border border-emerald-500/60 outline-none w-36"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSaveNickname}
+                  className="text-xs bg-emerald-500 text-slate-950 font-semibold px-2 py-1 rounded-lg hover:bg-emerald-400"
+                >
+                  Lưu
+                </button>
+                <button
+                  onClick={() => setIsEditingNickname(false)}
+                  className="text-xs text-slate-400 hover:text-white px-1"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setTempNickname(activeConversation.ai_nickname || "");
+                  setIsEditingNickname(true);
+                }}
+                className="text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full hover:bg-emerald-500/20 transition-all flex items-center gap-1"
+                title="Bấm để đổi biệt danh AI trong hội thoại này"
+              >
+                <span>🤖 {aiDisplayName}</span>
+                <span className="opacity-60 text-[9px]">✏️</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Customization controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Personality selector */}
           <select
             value={activeConversation.personality_code}
@@ -116,13 +170,18 @@ export function ChatArea({
               >
                 {/* Avatar */}
                 <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 shadow-md ${
+                  className={`min-w-[32px] h-8 px-2 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 shadow-md ${
                     isUser
                       ? "bg-emerald-500 text-slate-950"
                       : "bg-slate-800 text-emerald-400 border border-slate-700"
                   }`}
+                  title={isUser ? "Bạn" : aiDisplayName}
                 >
-                  {isUser ? "Bạn" : "AI"}
+                  {isUser
+                    ? "Bạn"
+                    : aiDisplayName.length > 8
+                    ? aiDisplayName.slice(0, 7) + "…"
+                    : aiDisplayName}
                 </div>
 
                 {/* Content Bubble */}
@@ -146,7 +205,7 @@ export function ChatArea({
         )}
         {isStreaming && (
           <div className="flex gap-2 items-center text-slate-400 text-xs italic py-2">
-            <span className="animate-pulse">🤖 AI đang suy nghĩ...</span>
+            <span className="animate-pulse">🤖 {aiDisplayName} đang suy nghĩ...</span>
           </div>
         )}
         {streamError && (

@@ -19,6 +19,7 @@ export class ConversationsService {
       id: conv.id,
       title: conv.title,
       personality_code: conv.personality_code,
+      ai_nickname: conv.ai_nickname ?? null,
       summary: conv.summary,
       summary_version: conv.summary_version,
       last_message_at: conv.last_message_at.toISOString(),
@@ -69,6 +70,7 @@ export class ConversationsService {
         user_id: user.id,
         personality_code: personalityCode,
         title,
+        ai_nickname: dto.ai_nickname?.trim() || null,
       },
     });
 
@@ -95,6 +97,9 @@ export class ConversationsService {
 
     const data: any = {};
     if (dto.title !== undefined) data.title = dto.title;
+    if (dto.ai_nickname !== undefined) {
+      data.ai_nickname = dto.ai_nickname.trim() || null;
+    }
     if (dto.personality_code !== undefined) {
       const p = await this.prisma.personality.findUnique({
         where: { code: dto.personality_code },

@@ -60,8 +60,11 @@ export class ChatService {
     const personality = await this.prisma.personality.findUnique({
       where: { code: personalityCode },
     });
-    const systemPrompt =
+    let systemPrompt =
       personality?.system_prompt || "Bạn là một trợ lý AI hữu ích.";
+    if (conv.ai_nickname) {
+      systemPrompt += `\nBiệt danh do người dùng đặt cho bạn trong cuộc trò chuyện này là "${conv.ai_nickname}". Hãy tự nhận biệt danh này khi giao tiếp và xưng hô tự nhiên.`;
+    }
 
     // Create user message
     const userMsg = await this.prisma.message.create({

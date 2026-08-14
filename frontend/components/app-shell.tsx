@@ -10,6 +10,7 @@ import { MemoriesView } from "@/components/views/MemoriesView";
 import { UsageView } from "@/components/views/UsageView";
 import { HealthView } from "@/components/views/HealthView";
 import { ProfileModal } from "@/components/modals/ProfileModal";
+import { CreateConversationModal } from "@/components/modals/CreateConversationModal";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { api } from "@/lib/api";
 
@@ -32,6 +33,7 @@ export function AppShell({
   const [view, setView] = useState<View>(initialView);
   const [authMode, setAuthMode] = useState<AuthMode>(initialAuthMode);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isCreateConvOpen, setIsCreateConvOpen] = useState(false);
 
   // Form states
   const [email, setEmail] = useState("");
@@ -303,7 +305,7 @@ export function AppShell({
         conversations={conversations}
         activeConvId={activeConvId}
         onSelectConversation={(id) => setActiveConvId(id)}
-        onCreateConversation={() => createConversation()}
+        onCreateConversation={() => setIsCreateConvOpen(true)}
         showArchived={showArchived}
         onToggleShowArchived={(val) => setShowArchived(val)}
         onArchive={(id) => archiveConversation(id)}
@@ -333,6 +335,9 @@ export function AppShell({
             onChangePersonality={(code) => {
               if (activeConvId) updateConversation(activeConvId, { personality_code: code });
             }}
+            onChangeAiNickname={(nickname) => {
+              if (activeConvId) updateConversation(activeConvId, { ai_nickname: nickname });
+            }}
           />
         )}
 
@@ -342,6 +347,16 @@ export function AppShell({
 
         {view === "health" && <HealthView />}
       </main>
+
+      {/* Create Conversation Modal */}
+      <CreateConversationModal
+        isOpen={isCreateConvOpen}
+        onClose={() => setIsCreateConvOpen(false)}
+        personalities={personalities}
+        onCreate={async (code, firstMsg, nickname) => {
+          await createConversation(code, firstMsg, nickname);
+        }}
+      />
 
       {/* Profile Modal */}
       <ProfileModal
