@@ -25,14 +25,8 @@ async function bootstrap() {
   const normalizedPrefix = prefix.startsWith("/") ? prefix.slice(1) : prefix;
   app.setGlobalPrefix(normalizedPrefix);
 
-  const origins = configService.get<string[]>("frontendOrigins", [
-    "http://localhost:3000",
-  ]);
-  const allowAllOrigins = origins.includes("*");
   app.enableCors({
-    origin: allowAllOrigins
-      ? (origin, callback) => callback(null, true)
-      : origins,
+    origin: (origin, callback) => callback(null, true),
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [
