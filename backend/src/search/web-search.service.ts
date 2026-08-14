@@ -52,13 +52,27 @@ export class WebSearchService {
       }
     }
 
-    // Fallback search engine (DuckDuckGo Lite POST)
+    // Tier 2: Fallback search engine (DuckDuckGo Lite POST with full browser headers)
     try {
-      return await this.fallbackSearch(query, numResults);
+      const ddgResults = await this.fallbackSearch(query, numResults);
+      if (ddgResults && ddgResults.length > 0) {
+        return ddgResults;
+      }
     } catch (err: any) {
-      this.logger.error(`Fallback search also failed: ${err.message}`);
-      return [];
+      this.logger.warn(`DuckDuckGo fallback search failed: ${err.message}`);
     }
+
+    // Tier 3: Wikipedia Open Search API fallback
+    try {
+      const wikiResults = await this.wikipediaSearch(query, numResults);
+      if (wikiResults && wikiResults.length > 0) {
+        return wikiResults;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Wikipedia API fallback search failed: ${err.message}`);
+    }
+
+    return [];
   }
 
   private async fetchGoogleCustomSearch(
@@ -85,14 +99,16 @@ export class WebSearchService {
     try {
       html = await this.httpPost(searchUrl, postBody, {
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        Origin: "https://lite.duckduckgo.com",
+        Referer: "https://lite.duckduckgo.com/",
       });
     } catch (err: any) {
-      this.logger.warn(
-        `DuckDuckGo Lite POST search failed: ${err.message}.`,
-      );
+      this.logger.warn(`DuckDuckGo Lite POST search failed: ${err.message}.`);
       return [];
     }
 
@@ -149,6 +165,31 @@ export class WebSearchService {
     }
 
     return results;
+  }
+
+  private async wikipediaSearch(
+    query: string,
+    numResults: number = 5,
+  ): Promise<SearchResult[]> {
+    try {
+      const searchUrl = `https://vi.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+        query,
+      )}&utf8=&format=json`;
+      const jsonStr = await this.httpGet(searchUrl, {
+        "User-Agent": "ChatCrazy-Search/1.0",
+      });
+      const data = JSON.parse(jsonStr);
+      if (data?.query?.search && Array.isArray(data.query.search)) {
+        return data.query.search.slice(0, numResults).map((item: any) => ({
+          title: this.cleanText(item.title || "Wikipedia"),
+          snippet: this.cleanText(item.snippet || ""),
+          url: `https://vi.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
+        }));
+      }
+    } catch (err: any) {
+      this.logger.warn(`Wikipedia fallback search failed: ${err.message}`);
+    }
+    return [];
   }
 
   private httpGet(
