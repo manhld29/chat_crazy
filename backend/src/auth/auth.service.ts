@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -22,6 +23,8 @@ import { MailService } from "../mail/mail.service";
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -223,22 +226,34 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto, mailService: MailService) {
+    this.logger.log(`[FORGOT_PASSWORD_REQUEST] Received request for email: "${dto.email}"`);
+
     const user = await this.prisma.user.findFirst({
       where: { email: dto.email },
     });
 
-    if (user && !user.is_guest) {
+    if (!user) {
+      this.logger.warn(`⚠️ [FORGOT_PASSWORD_USER_NOT_FOUND] No user account registered with email: "${dto.email}". (Generic response returned)`);
+    } else if (user.is_guest) {
+      this.logger.warn(`⚠️ [FORGOT_PASSWORD_GUEST_USER] User "${dto.email}" (ID: ${user.id}) is a guest account without password. (Generic response returned)`);
+    } else {
+      this.logger.log(`✅ [FORGOT_PASSWORD_USER_FOUND] Registered user found (ID: ${user.id}). Generating reset token...`);
       const rawToken = crypto.randomBytes(32).toString("hex");
       const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Expiration: 10 minutes
 
-      await this.prisma.passwordResetToken.create({
-        data: {
-          user_id: user.id,
-          token_hash: tokenHash,
-          expires_at: expiresAt,
-        },
-      });
+      try {
+        await this.prisma.passwordResetToken.create({
+          data: {
+            user_id: user.id,
+            token_hash: tokenHash,
+            expires_at: expiresAt,
+          },
+        });
+        this.logger.log(`✅ [FORGOT_PASSWORD_TOKEN_SAVED] Reset token created in DB for user ID: ${user.id} (Expires: ${expiresAt.toISOString()})`);
+      } catch (dbErr: any) {
+        this.logger.error(`❌ [FORGOT_PASSWORD_DB_ERROR] Failed to save reset token to DB for user ID: ${user.id}: ${dbErr.message}`, dbErr.stack);
+      }
 
       await mailService.sendPasswordResetEmail(user.email!, rawToken);
     }

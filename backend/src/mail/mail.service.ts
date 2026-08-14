@@ -14,6 +14,12 @@ export class MailService {
     const user = this.configService.get<string>("SMTP_USER");
     const pass = this.configService.get<string>("SMTP_PASS");
 
+    this.logger.log(`[MAIL_SERVICE_INIT] Checking SMTP configuration...`);
+    this.logger.log(`[MAIL_SERVICE_INIT] SMTP_HOST: ${host || "NOT SET"}`);
+    this.logger.log(`[MAIL_SERVICE_INIT] SMTP_PORT: ${port || 587}`);
+    this.logger.log(`[MAIL_SERVICE_INIT] SMTP_USER: ${user ? "PROVIDED" : "NOT SET"}`);
+    this.logger.log(`[MAIL_SERVICE_INIT] SMTP_PASS: ${pass ? "PROVIDED (MASKED)" : "NOT SET"}`);
+
     if (host && user && pass) {
       this.transporter = nodemailer.createTransport({
         host,
@@ -21,10 +27,10 @@ export class MailService {
         secure: port === 465,
         auth: { user, pass },
       });
-      this.logger.log(`SMTP transporter initialized successfully for host: ${host}:${port}`);
+      this.logger.log(`✅ [MAIL_SERVICE_INIT] SMTP transporter created successfully for ${host}:${port || 587}`);
     } else {
       this.logger.warn(
-        "⚠️ SMTP credentials (SMTP_HOST, SMTP_USER, SMTP_PASS) are missing. Emails will NOT be delivered to user inbox until SMTP is configured in environment variables.",
+        "⚠️ [MAIL_SERVICE_INIT] SMTP environment variables (SMTP_HOST, SMTP_USER, SMTP_PASS) are missing on Vercel/Server. Emails cannot be delivered to inbox until these variables are added in Vercel Dashboard Settings.",
       );
     }
   }
@@ -64,27 +70,29 @@ export class MailService {
       </div>
     `;
 
-    this.logger.log(
-      `🔑 [PASSWORD RESET LINK FOR ${email} (Expires in 10 mins)]: ${resetUrl}`,
-    );
+    this.logger.log(`🔑 [PASSWORD_RESET_LINK_LOGGED] Target Email: ${email} | Link (Expires in 10 mins): ${resetUrl}`);
 
     if (this.transporter) {
       try {
-        await this.transporter.sendMail({
+        this.logger.log(`📨 [MAIL_SENDING_ATTEMPT] Sending email to ${email} via SMTP ${fromAddress}...`);
+        const info = await this.transporter.sendMail({
           from: fromAddress,
           to: email,
           subject: "🔑 [Funny Chatbot] Đặt lại mật khẩu tài khoản",
           html: htmlContent,
         });
-        this.logger.log(`✅ Password reset email sent successfully to ${email}`);
+        this.logger.log(`✅ [MAIL_SEND_SUCCESS] Email sent successfully to ${email}. MessageId: ${info.messageId} | Response: ${info.response}`);
         return true;
       } catch (error: any) {
-        this.logger.error(`❌ Failed to send reset email to ${email}: ${error.message}`, error.stack);
+        this.logger.error(
+          `❌ [MAIL_SEND_ERROR] Failed sending reset email to ${email}. Error: ${error.message} | Code: ${error.code || 'N/A'} | Command: ${error.command || 'N/A'}`,
+          error.stack,
+        );
         return false;
       }
     } else {
       this.logger.warn(
-        `⚠️ [Vercel/Dev Note] SMTP is not set up. Email to ${email} could not be sent to inbox. Link generated: ${resetUrl}`,
+        `⚠️ [MAIL_SKIPPED_NO_SMTP] Cannot send email to ${email} because SMTP is not configured in Vercel environment variables. Link to use manually: ${resetUrl}`,
       );
     }
 
