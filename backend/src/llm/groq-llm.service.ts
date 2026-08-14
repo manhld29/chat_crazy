@@ -5,18 +5,98 @@ import * as https from "https";
 import { URL } from "url";
 import { LLMRequest, LLMUsage } from "./llm.types";
 
+export const OPENROUTER_FREE_MODELS = [
+  {
+    id: "meta-llama/llama-3.3-70b-instruct:free",
+    name: "Meta Llama 3.3 70B Instruct (Free)",
+  },
+  {
+    id: "google/gemini-2.0-flash-exp:free",
+    name: "Google Gemini 2.0 Flash (Free)",
+  },
+  {
+    id: "deepseek/deepseek-r1:free",
+    name: "DeepSeek R1 Reasoning (Free)",
+  },
+  {
+    id: "deepseek/deepseek-chat:free",
+    name: "DeepSeek V3 (Free)",
+  },
+  {
+    id: "qwen/qwen-2.5-coder-32b-instruct:free",
+    name: "Qwen 2.5 Coder 32B (Free)",
+  },
+  {
+    id: "mistralai/mistral-7b-instruct:free",
+    name: "Mistral 7B Instruct (Free)",
+  },
+] as const;
+
 @Injectable()
 export class GroqLlmService {
   private readonly logger = new Logger(GroqLlmService.name);
 
   constructor(private readonly configService: ConfigService) {}
 
-  async createCompletion(req: LLMRequest): Promise<any> {
-    const apiKey = this.configService.get<string>("groqApiKey");
-    const baseUrl = this.configService.get<string>(
+  private getProviderConfig(targetModel: string) {
+    const isOpenRouterModel =
+      targetModel.includes("/") ||
+      targetModel.endsWith(":free") ||
+      targetModel.startsWith("openrouter/");
+
+    const openrouterApiKey = this.configService.get<string>("openrouterApiKey");
+    const openrouterBaseUrl = this.configService.get<string>(
+      "openrouterBaseUrl",
+      "https://openrouter.ai/api/v1",
+    );
+    const groqApiKey = this.configService.get<string>("groqApiKey");
+    const groqBaseUrl = this.configService.get<string>(
       "groqBaseUrl",
       "https://api.groq.com/openai/v1",
     );
+
+    if (isOpenRouterModel) {
+      const apiKey = openrouterApiKey || groqApiKey || "";
+      const baseUrl = openrouterApiKey
+        ? openrouterBaseUrl
+        : groqApiKey
+        ? groqBaseUrl
+        : openrouterBaseUrl;
+      return {
+        apiKey,
+        baseUrl,
+        model: targetModel,
+        extraHeaders: {
+          "HTTP-Referer": "https://chatcrazy.vercel.app",
+          "X-Title": "ChatCrazy AI",
+        },
+      };
+    }
+
+    if (!groqApiKey && openrouterApiKey) {
+      return {
+        apiKey: openrouterApiKey,
+        baseUrl: openrouterBaseUrl,
+        model: "meta-llama/llama-3.3-70b-instruct:free",
+        extraHeaders: {
+          "HTTP-Referer": "https://chatcrazy.vercel.app",
+          "X-Title": "ChatCrazy AI",
+        },
+      };
+    }
+
+    return {
+      apiKey: groqApiKey || "",
+      baseUrl: groqBaseUrl,
+      model: targetModel,
+      extraHeaders: {},
+    };
+  }
+
+  async createCompletion(req: LLMRequest): Promise<any> {
+    const provider = this.getProviderConfig(req.model);
+    const apiKey = provider.apiKey;
+    const baseUrl = provider.baseUrl;
 
     if (!apiKey) {
       return {
@@ -35,7 +115,7 @@ export class GroqLlmService {
     const url = new URL(endpoint);
 
     const bodyObj: any = {
-      model: req.model,
+      model: provider.model,
       messages: req.messages,
       temperature: req.temperature ?? 0.7,
       max_tokens: req.max_tokens ?? 1024,
@@ -66,6 +146,7 @@ export class GroqLlmService {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
           "Content-Length": Buffer.byteLength(requestBody),
+          ...provider.extraHeaders,
         },
       };
 
@@ -82,7 +163,7 @@ export class GroqLlmService {
           errBody += chunk.toString();
         }
         this.logger.warn(
-          `Groq API 429 Rate limit hit in createCompletion (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${600 * (attempt + 1)}ms...`,
+          `LLM API 429 Rate limit hit in createCompletion (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${600 * (attempt + 1)}ms...`,
         );
         await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
         continue;
@@ -95,29 +176,27 @@ export class GroqLlmService {
 
       if (res.statusCode && res.statusCode >= 400) {
         throw new Error(
-          `Groq LLM API returned status ${res.statusCode}: ${resText}`,
+          `LLM API returned status ${res.statusCode}: ${resText}`,
         );
       }
 
       return JSON.parse(resText);
     }
 
-    throw new Error(`Groq LLM API failed after ${maxRetries} retries.`);
+    throw new Error(`LLM API failed after ${maxRetries} retries.`);
   }
 
   async *streamCompletion(
     req: LLMRequest,
   ): AsyncGenerator<{ delta: string; usage?: LLMUsage }, void, unknown> {
-    const apiKey = this.configService.get<string>("groqApiKey");
-    const baseUrl = this.configService.get<string>(
-      "groqBaseUrl",
-      "https://api.groq.com/openai/v1",
-    );
+    const provider = this.getProviderConfig(req.model);
+    const apiKey = provider.apiKey;
+    const baseUrl = provider.baseUrl;
 
     if (!apiKey) {
       // Mock mode if no API key is provided
       this.logger.warn(
-        "GROQ_API_KEY is not configured. Falling back to mock LLM responses.",
+        "LLM API Key is not configured. Falling back to mock LLM responses.",
       );
       const mockText = `Đây là câu trả lời thử nghiệm từ hệ thống chatbot (Mock Mode). Bạn vừa nhắn: "${req.messages[req.messages.length - 1]?.content || ""}".`;
       const words = mockText.split(" ");
@@ -140,7 +219,7 @@ export class GroqLlmService {
     const url = new URL(endpoint);
 
     const bodyObj: any = {
-      model: req.model,
+      model: provider.model,
       messages: req.messages,
       temperature: req.temperature ?? 0.7,
       max_tokens: req.max_tokens ?? 1024,
@@ -170,6 +249,7 @@ export class GroqLlmService {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
           "Content-Length": Buffer.byteLength(requestBody),
+          ...provider.extraHeaders,
         },
       };
 
@@ -188,7 +268,7 @@ export class GroqLlmService {
           errBody += chunk.toString();
         }
         this.logger.warn(
-          `Groq API 429 Rate limit hit in streamCompletion (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${600 * (attempt + 1)}ms...`,
+          `LLM API 429 Rate limit hit in streamCompletion (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${600 * (attempt + 1)}ms...`,
         );
         await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
         continue;
@@ -205,7 +285,7 @@ export class GroqLlmService {
         }
       }
       throw new Error(
-        `Groq LLM API returned status ${res?.statusCode || 500}: ${errBody}`,
+        `LLM API returned status ${res?.statusCode || 500}: ${errBody}`,
       );
     }
 

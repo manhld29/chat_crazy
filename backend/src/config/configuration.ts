@@ -11,6 +11,9 @@ export default () => ({
 
   groqApiKey: process.env.GROQ_API_KEY || "",
   groqBaseUrl: process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1",
+  openrouterApiKey: process.env.OPENROUTER_API_KEY || "",
+  openrouterBaseUrl:
+    process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1",
   tinyfishApiKey: process.env.TINYFISH_API_KEY || "",
   tavilyApiKey:
     process.env.TAVILY_API_KEY ||
