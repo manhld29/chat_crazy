@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import http from "http";
-import https from "https";
+import * as http from "http";
+import * as https from "https";
 import { URL } from "url";
 import { LLMRequest, LLMUsage } from "./llm.types";
 

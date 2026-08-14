@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import http from "http";
-import https from "https";
+import * as http from "http";
+import * as https from "https";
 import { URL } from "url";
 
 export interface SearchResult {
@@ -22,24 +22,37 @@ export class WebSearchService {
 
     if (apiKey && cx) {
       try {
-        const rawResponse = await this.fetchGoogleCustomSearch(query, apiKey, cx);
-        if (rawResponse && Array.isArray(rawResponse.items) && rawResponse.items.length > 0) {
-          const formatted = rawResponse.items.slice(0, numResults).map((item: any) => ({
-            title: this.cleanText(item.title || "No Title"),
-            snippet: this.cleanText(item.snippet || ""),
-            url: this.sanitizeUrl(item.link || ""),
-          })).filter((res: SearchResult) => res.url !== "");
+        const rawResponse = await this.fetchGoogleCustomSearch(
+          query,
+          apiKey,
+          cx,
+        );
+        if (
+          rawResponse &&
+          Array.isArray(rawResponse.items) &&
+          rawResponse.items.length > 0
+        ) {
+          const formatted = rawResponse.items
+            .slice(0, numResults)
+            .map((item: any) => ({
+              title: this.cleanText(item.title || "No Title"),
+              snippet: this.cleanText(item.snippet || ""),
+              url: this.sanitizeUrl(item.link || ""),
+            }))
+            .filter((res: SearchResult) => res.url !== "");
 
           if (formatted.length > 0) {
             return formatted;
           }
         }
       } catch (err: any) {
-        this.logger.warn(`Google Custom Search API failed: ${err.message}. Falling back to search engine parser.`);
+        this.logger.warn(
+          `Google Custom Search API failed: ${err.message}. Falling back to search engine parser.`,
+        );
       }
     }
 
-    // Fallback search engine (DuckDuckGo / Scraper)
+    // Fallback search engine (DuckDuckGo Lite POST)
     try {
       return await this.fallbackSearch(query, numResults);
     } catch (err: any) {
@@ -48,7 +61,11 @@ export class WebSearchService {
     }
   }
 
-  private async fetchGoogleCustomSearch(query: string, apiKey: string, cx: string): Promise<any> {
+  private async fetchGoogleCustomSearch(
+    query: string,
+    apiKey: string,
+    cx: string,
+  ): Promise<any> {
     const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(
       apiKey,
     )}&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(query)}`;
@@ -57,52 +74,87 @@ export class WebSearchService {
     return JSON.parse(responseText);
   }
 
-  private async fallbackSearch(query: string, numResults: number = 5): Promise<SearchResult[]> {
-    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    const html = await this.httpGet(searchUrl, {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-    });
+  private async fallbackSearch(
+    query: string,
+    numResults: number = 5,
+  ): Promise<SearchResult[]> {
+    const searchUrl = "https://lite.duckduckgo.com/lite/";
+    const postBody = `q=${encodeURIComponent(query)}`;
+
+    let html = "";
+    try {
+      html = await this.httpPost(searchUrl, postBody, {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+      });
+    } catch (err: any) {
+      this.logger.warn(
+        `DuckDuckGo Lite POST search failed: ${err.message}.`,
+      );
+      return [];
+    }
 
     const results: SearchResult[] = [];
-    
-    // Parse DuckDuckGo html result blocks
-    // Pattern matches <a class="result__a" href="...">title</a> and snippets in <a class="result__snippet">
-    const resultBlockRegex = /<a class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
-    
-    let match: RegExpExecArray | null;
-    while ((match = resultBlockRegex.exec(html)) !== null && results.length < numResults) {
-      const rawUrl = match[1];
-      const rawTitle = match[2];
-      const rawSnippet = match[3];
 
-      let cleanUrl = rawUrl;
-      // Handle duckduckgo redirect urls: //duckduckgo.com/l/?uddg=...
+    // Parse DuckDuckGo Lite html
+    const resultLinkRegex =
+      /<a[^>]*class=['"]result-link['"][^>]*>([\s\S]*?)<\/a>/gi;
+    const snippetRegex =
+      /class=['"]result-snippet['"][^>]*>([\s\S]*?)<\/td>/gi;
+
+    const links: { url: string; title: string }[] = [];
+    let linkMatch: RegExpExecArray | null;
+
+    while ((linkMatch = resultLinkRegex.exec(html)) !== null) {
+      const fullTag = linkMatch[0];
+      const rawTitle = linkMatch[1];
+      const hrefMatch = /href=['"]([^'"]+)['"]/i.exec(fullTag);
+      let rawUrl = hrefMatch ? hrefMatch[1] : "";
+
       if (rawUrl.includes("uddg=")) {
         try {
-          const parsed = new URL("https:" + (rawUrl.startsWith("//") ? rawUrl : "//" + rawUrl));
+          const parsed = new URL(
+            "https:" + (rawUrl.startsWith("//") ? rawUrl : "//" + rawUrl),
+          );
           const uddg = parsed.searchParams.get("uddg");
-          if (uddg) cleanUrl = decodeURIComponent(uddg);
+          if (uddg) rawUrl = decodeURIComponent(uddg);
         } catch {
           // ignore
         }
       }
 
-      const sanitizedUrl = this.sanitizeUrl(cleanUrl);
+      const sanitizedUrl = this.sanitizeUrl(rawUrl);
       if (sanitizedUrl) {
-        results.push({
-          title: this.cleanText(rawTitle),
-          snippet: this.cleanText(rawSnippet),
+        links.push({
           url: sanitizedUrl,
+          title: this.cleanText(rawTitle),
         });
       }
+    }
+
+    const snippets: string[] = [];
+    let snippetMatch: RegExpExecArray | null;
+    while ((snippetMatch = snippetRegex.exec(html)) !== null) {
+      snippets.push(this.cleanText(snippetMatch[1]));
+    }
+
+    for (let i = 0; i < Math.min(links.length, numResults); i++) {
+      results.push({
+        title: links[i].title,
+        url: links[i].url,
+        snippet: snippets[i] || "",
+      });
     }
 
     return results;
   }
 
-  private httpGet(targetUrl: string, customHeaders: Record<string, string> = {}): Promise<string> {
+  private httpGet(
+    targetUrl: string,
+    customHeaders: Record<string, string> = {},
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const parsedUrl = new URL(targetUrl);
       const isHttps = parsedUrl.protocol === "https:";
@@ -136,6 +188,51 @@ export class WebSearchService {
         req.destroy();
         reject(new Error("HTTP request timeout"));
       });
+      req.end();
+    });
+  }
+
+  private httpPost(
+    targetUrl: string,
+    bodyData: string,
+    customHeaders: Record<string, string> = {},
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const parsedUrl = new URL(targetUrl);
+      const isHttps = parsedUrl.protocol === "https:";
+      const httpLib = isHttps ? https : http;
+
+      const reqOptions = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || (isHttps ? 443 : 80),
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: "POST",
+        headers: {
+          "User-Agent": "ChatCrazy-WebSearch/1.0",
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Length": Buffer.byteLength(bodyData),
+          ...customHeaders,
+        },
+      };
+
+      const req = httpLib.request(reqOptions, (res) => {
+        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 400)) {
+          reject(new Error(`HTTP error code ${res.statusCode}`));
+          return;
+        }
+
+        let body = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => (body += chunk));
+        res.on("end", () => resolve(body));
+      });
+
+      req.on("error", (err) => reject(err));
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error("HTTP request timeout"));
+      });
+      req.write(bodyData);
       req.end();
     });
   }
