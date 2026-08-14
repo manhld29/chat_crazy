@@ -17,17 +17,36 @@ export class WebSearchService {
   constructor(private readonly configService: ConfigService) {}
 
   async search(query: string, numResults: number = 5): Promise<SearchResult[]> {
-    const apiKey = this.configService.get<string>("googleSearchApiKey");
-    const cx = this.configService.get<string>("googleSearchCx");
+    const tavilyKey = this.configService.get<string>("tavilyApiKey");
+    const googleKey = this.configService.get<string>("googleSearchApiKey");
+    const googleCx = this.configService.get<string>("googleSearchCx");
     const tinyfishKey = this.configService.get<string>("tinyfishApiKey");
 
-    // Tier 1: Google Custom Search API
-    if (apiKey && cx) {
+    // Tier 1: Tavily Search API (High Quality AI Search)
+    if (tavilyKey) {
+      try {
+        const tavilyResults = await this.fetchTavilySearch(
+          query,
+          tavilyKey,
+          numResults,
+        );
+        if (tavilyResults && tavilyResults.length > 0) {
+          return tavilyResults;
+        }
+      } catch (err: any) {
+        this.logger.warn(
+          `Tavily Search API failed: ${err.message}. Falling back to next search provider.`,
+        );
+      }
+    }
+
+    // Tier 2: Google Custom Search API
+    if (googleKey && googleCx) {
       try {
         const rawResponse = await this.fetchGoogleCustomSearch(
           query,
-          apiKey,
-          cx,
+          googleKey,
+          googleCx,
         );
         if (
           rawResponse &&
@@ -54,7 +73,7 @@ export class WebSearchService {
       }
     }
 
-    // Tier 2: TinyFish Search API
+    // Tier 3: TinyFish Search API
     if (tinyfishKey) {
       try {
         const tfResults = await this.fetchTinyFishSearch(
@@ -72,7 +91,7 @@ export class WebSearchService {
       }
     }
 
-    // Tier 3: DuckDuckGo Lite POST with full browser headers
+    // Tier 4: DuckDuckGo Lite POST with full browser headers
     try {
       const ddgResults = await this.fallbackSearch(query, numResults);
       if (ddgResults && ddgResults.length > 0) {
@@ -82,7 +101,7 @@ export class WebSearchService {
       this.logger.warn(`DuckDuckGo fallback search failed: ${err.message}`);
     }
 
-    // Tier 4: Wikipedia Open Search API fallback
+    // Tier 5: Wikipedia Open Search API fallback
     try {
       const wikiResults = await this.wikipediaSearch(query, numResults);
       if (wikiResults && wikiResults.length > 0) {
@@ -92,6 +111,35 @@ export class WebSearchService {
       this.logger.warn(`Wikipedia API fallback search failed: ${err.message}`);
     }
 
+    return [];
+  }
+
+  private async fetchTavilySearch(
+    query: string,
+    apiKey: string,
+    numResults: number = 5,
+  ): Promise<SearchResult[]> {
+    const searchUrl = "https://api.tavily.com/search";
+    const bodyData = JSON.stringify({
+      query,
+      max_results: numResults,
+    });
+
+    const responseText = await this.httpPostJson(searchUrl, bodyData, {
+      Authorization: `Bearer ${apiKey}`,
+    });
+    const parsed = JSON.parse(responseText);
+
+    if (parsed && Array.isArray(parsed.results)) {
+      return parsed.results
+        .slice(0, numResults)
+        .map((item: any) => ({
+          title: this.cleanText(item.title || "Tavily Search Result"),
+          snippet: this.cleanText(item.content || item.snippet || ""),
+          url: this.sanitizeUrl(item.url || ""),
+        }))
+        .filter((res: SearchResult) => res.url !== "");
+    }
     return [];
   }
 
@@ -125,7 +173,9 @@ export class WebSearchService {
       return parsed.results
         .slice(0, numResults)
         .map((item: any) => ({
-          title: this.cleanText(item.title || item.site_name || "TinyFish Search"),
+          title: this.cleanText(
+            item.title || item.site_name || "TinyFish Search",
+          ),
           snippet: this.cleanText(item.snippet || ""),
           url: this.sanitizeUrl(item.url || ""),
         }))
@@ -143,7 +193,7 @@ export class WebSearchService {
 
     let html = "";
     try {
-      html = await this.httpPost(searchUrl, postBody, {
+      html = await this.httpPostForm(searchUrl, postBody, {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Content-Type": "application/x-www-form-urlencoded",
@@ -279,7 +329,52 @@ export class WebSearchService {
     });
   }
 
-  private httpPost(
+  private httpPostJson(
+    targetUrl: string,
+    jsonData: string,
+    customHeaders: Record<string, string> = {},
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const parsedUrl = new URL(targetUrl);
+      const isHttps = parsedUrl.protocol === "https:";
+      const httpLib = isHttps ? https : http;
+
+      const reqOptions = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || (isHttps ? 443 : 80),
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: "POST",
+        headers: {
+          "User-Agent": "ChatCrazy-WebSearch/1.0",
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(jsonData),
+          ...customHeaders,
+        },
+      };
+
+      const req = httpLib.request(reqOptions, (res) => {
+        if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 400)) {
+          reject(new Error(`HTTP error code ${res.statusCode}`));
+          return;
+        }
+
+        let body = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => (body += chunk));
+        res.on("end", () => resolve(body));
+      });
+
+      req.on("error", (err) => reject(err));
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error("HTTP request timeout"));
+      });
+      req.write(jsonData);
+      req.end();
+    });
+  }
+
+  private httpPostForm(
     targetUrl: string,
     bodyData: string,
     customHeaders: Record<string, string> = {},

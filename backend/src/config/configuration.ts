@@ -14,6 +14,9 @@ export default () => ({
   googleSearchApiKey: process.env.GOOGLE_SEARCH_API_KEY || "",
   googleSearchCx: process.env.GOOGLE_SEARCH_CX || "",
   tinyfishApiKey: process.env.TINYFISH_API_KEY || "",
+  tavilyApiKey:
+    process.env.TAVILY_API_KEY ||
+    "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",
   defaultLlmModel: process.env.DEFAULT_LLM_MODEL || "llama-3.3-70b-versatile",
   cheapLlmModel: process.env.CHEAP_LLM_MODEL || "llama-3.1-8b-instant",
   fallbackLlmModel: process.env.FALLBACK_LLM_MODEL || "llama-3.1-8b-instant",

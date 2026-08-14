@@ -10,6 +10,7 @@ describe("WebSearchService", () => {
       if (key === "googleSearchApiKey") return "test-api-key";
       if (key === "googleSearchCx") return "test-cx";
       if (key === "tinyfishApiKey") return "test-tinyfish-key";
+      if (key === "tavilyApiKey") return "test-tavily-key";
       return null;
     }),
   };
@@ -33,7 +34,32 @@ describe("WebSearchService", () => {
   });
 
   describe("search", () => {
+    it("should return formatted search results when Tavily Search API succeeds", async () => {
+      mockConfigService.get.mockImplementation((key: string): any => {
+        if (key === "tavilyApiKey") return "test-tavily-key";
+        return "";
+      });
+
+      jest.spyOn(service as any, "fetchTavilySearch").mockResolvedValue([
+        {
+          title: "Tavily Search Result",
+          snippet: "Live AI web access snippet",
+          url: "https://tavily.com/result",
+        },
+      ]);
+
+      const results = await service.search("latest AI news");
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe("Tavily Search Result");
+    });
+
     it("should return formatted search results when Google Custom Search API succeeds", async () => {
+      mockConfigService.get.mockImplementation((key: string): any => {
+        if (key === "googleSearchApiKey") return "test-api-key";
+        if (key === "googleSearchCx") return "test-cx";
+        return "";
+      });
+
       const mockGoogleResponse = {
         items: [
           {
@@ -62,27 +88,15 @@ describe("WebSearchService", () => {
 
     it("should return TinyFish API search results when Google Search is unconfigured", async () => {
       mockConfigService.get.mockImplementation((key: string): any => {
-        if (key === "googleSearchApiKey") return "";
         if (key === "tinyfishApiKey") return "test-tinyfish-key";
-        return null;
+        return "";
       });
-
-      const mockTinyFishResponse = {
-        query: "Thời tiết Hà Nội",
-        results: [
-          {
-            title: "TinyFish Search Result",
-            snippet: "Accurate web automation snippet",
-            url: "https://tinyfish.ai/result",
-          },
-        ],
-      };
 
       jest.spyOn(service as any, "fetchTinyFishSearch").mockResolvedValue([
         {
-          title: mockTinyFishResponse.results[0].title,
-          snippet: mockTinyFishResponse.results[0].snippet,
-          url: mockTinyFishResponse.results[0].url,
+          title: "TinyFish Search Result",
+          snippet: "Accurate web automation snippet",
+          url: "https://tinyfish.ai/result",
         },
       ]);
 
@@ -91,11 +105,9 @@ describe("WebSearchService", () => {
       expect(results[0].title).toBe("TinyFish Search Result");
     });
 
-    it("should fallback gracefully if Google API and TinyFish API fail or are unconfigured", async () => {
+    it("should fallback gracefully if APIs fail or are unconfigured", async () => {
       mockConfigService.get.mockImplementation((key: string): any => {
-        if (key === "googleSearchApiKey") return "";
-        if (key === "tinyfishApiKey") return "";
-        return null;
+        return "";
       });
 
       jest.spyOn(service as any, "fallbackSearch").mockResolvedValue([
