@@ -10,6 +10,7 @@ import {
   ApiError,
   api,
 } from "@/lib/api";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 const ADMIN_ACCESS_TOKEN_KEY = "chat_crazy_admin_access_token";
 
@@ -320,13 +321,22 @@ function Field({
   return (
     <label className="grid gap-2 text-sm font-semibold" htmlFor={id}>
       {label}
-      <input
-        className="input"
-        id={id}
-        onChange={(event) => onChange(event.target.value)}
-        type={type}
-        value={value}
-      />
+      {type === "password" ? (
+        <PasswordInput
+          className="input"
+          id={id}
+          onChange={(event) => onChange(event.target.value)}
+          value={value}
+        />
+      ) : (
+        <input
+          className="input"
+          id={id}
+          onChange={(event) => onChange(event.target.value)}
+          type={type}
+          value={value}
+        />
+      )}
     </label>
   );
 }

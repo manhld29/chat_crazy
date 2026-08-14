@@ -11,11 +11,14 @@ import * as argon2 from "argon2";
 import * as crypto from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  ForgotPasswordDto,
   GuestDto,
   LoginDto,
   RegisterDto,
+  ResetPasswordDto,
   UpgradeGuestDto,
 } from "./dto/auth.dto";
+import { MailService } from "../mail/mail.service";
 
 @Injectable()
 export class AuthService {
@@ -217,6 +220,75 @@ export class AuthService {
     });
 
     return this.createTokens(updatedUser, userAgent, ipAddress);
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto, mailService: MailService) {
+    const user = await this.prisma.user.findFirst({
+      where: { email: dto.email },
+    });
+
+    if (user && !user.is_guest) {
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Expiration: 10 minutes
+
+      await this.prisma.passwordResetToken.create({
+        data: {
+          user_id: user.id,
+          token_hash: tokenHash,
+          expires_at: expiresAt,
+        },
+      });
+
+      await mailService.sendPasswordResetEmail(user.email!, rawToken);
+    }
+
+    return {
+      message:
+        "Nếu email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến email của bạn.",
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    if (dto.new_password.length < 6 || dto.new_password.length > 256) {
+      throw new BadRequestException("Mật khẩu mới phải từ 6 đến 256 ký tự");
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(dto.token).digest("hex");
+    const tokenRecord = await this.prisma.passwordResetToken.findUnique({
+      where: { token_hash: tokenHash },
+    });
+
+    if (
+      !tokenRecord ||
+      tokenRecord.used_at !== null ||
+      tokenRecord.expires_at < new Date()
+    ) {
+      throw new BadRequestException(
+        "Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn (chỉ có hiệu lực trong 10 phút).",
+      );
+    }
+
+    const newPasswordHash = await this.hashPassword(dto.new_password);
+
+    await this.prisma.user.update({
+      where: { id: tokenRecord.user_id },
+      data: { password_hash: newPasswordHash },
+    });
+
+    await this.prisma.passwordResetToken.update({
+      where: { id: tokenRecord.id },
+      data: { used_at: new Date() },
+    });
+
+    await this.prisma.refreshSession.updateMany({
+      where: { user_id: tokenRecord.user_id, revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
+
+    return {
+      message: "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới.",
+    };
   }
 
   formatUserPublic(user: User) {

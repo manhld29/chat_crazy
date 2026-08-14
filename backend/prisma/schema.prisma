@@ -26,6 +26,7 @@ model User {
   last_login_at      DateTime? @db.Timestamptz
 
   refresh_sessions RefreshSession[]
+  password_reset_tokens PasswordResetToken[]
   conversations    Conversation[]
   messages         Message[]
   memories         UserMemory[]
@@ -173,4 +174,18 @@ model Feedback {
 
   @@unique([message_id, user_id])
   @@map("feedback")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  user_id    String    @db.Uuid
+  token_hash String    @unique
+  expires_at DateTime  @db.Timestamptz
+  used_at    DateTime? @db.Timestamptz
+  created_at DateTime  @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("password_reset_tokens")
 }

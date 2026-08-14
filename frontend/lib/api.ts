@@ -317,6 +317,10 @@ export const api = {
     token: string,
     body: { email: string; password: string; display_name: string },
   ) => request<TokenResponse>("/auth/upgrade-guest", { token, method: "POST", body }),
+  forgotPassword: (body: { email: string }) =>
+    request<{ message: string }>("/auth/forgot-password", { method: "POST", body }),
+  resetPassword: (body: { token: string; new_password: string }) =>
+    request<{ message: string }>("/auth/reset-password", { method: "POST", body }),
   personalities: () => request<Personality[]>("/personalities"),
   conversations: (token: string, includeArchived = false) =>
     request<ConversationListResponse>(

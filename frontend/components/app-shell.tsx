@@ -10,9 +10,11 @@ import { MemoriesView } from "@/components/views/MemoriesView";
 import { UsageView } from "@/components/views/UsageView";
 import { HealthView } from "@/components/views/HealthView";
 import { ProfileModal } from "@/components/modals/ProfileModal";
+import { PasswordInput } from "@/components/ui/PasswordInput";
+import { api } from "@/lib/api";
 
 type View = "chat" | "memories" | "usage" | "profile" | "health";
-type AuthMode = "login" | "register" | "guest";
+type AuthMode = "login" | "register" | "guest" | "forgot";
 
 type AppShellProps = {
   initialView?: View;
@@ -35,6 +37,11 @@ export function AppShell({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+
+  // Forgot password states
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState("");
+  const [forgotError, setForgotError] = useState("");
 
   const token = session?.accessToken || null;
 
@@ -119,79 +126,160 @@ export function AppShell({
             </button>
           </div>
 
-          {authError && (
+          {authError && authMode !== "forgot" && (
             <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-xs text-center">
               {authError}
             </div>
           )}
 
-          {/* Form Content */}
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (authMode === "login") {
-                await login(email, password);
-              } else if (authMode === "register") {
-                await register(email, password, displayName);
-              } else {
-                await guestLogin(displayName || "Khách");
-              }
-            }}
-            className="flex flex-col gap-4"
-          >
-            {authMode !== "login" && (
+          {authMode === "forgot" ? (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setForgotSubmitting(true);
+                setForgotError("");
+                setForgotSuccess("");
+                try {
+                  const res = await api.forgotPassword({ email });
+                  setForgotSuccess(res.message);
+                } catch (err: any) {
+                  setForgotError(err?.message || "Có lỗi xảy ra, vui lòng thử lại.");
+                } finally {
+                  setForgotSubmitting(false);
+                }
+              }}
+              className="flex flex-col gap-4"
+            >
+              <div className="text-center text-xs text-slate-400 mb-1">
+                Nhập email của bạn để nhận link đặt lại mật khẩu (link có hiệu lực trong 10 phút).
+              </div>
+
+              {forgotError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-xs text-center">
+                  {forgotError}
+                </div>
+              )}
+
+              {forgotSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs text-center">
+                  {forgotSuccess}
+                </div>
+              )}
+
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] text-slate-400">Tên hiển thị</label>
+                <label className="text-[11px] text-slate-400">Email khôi phục</label>
                 <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="VD: Anh Sếp"
-                  required={authMode === "register"}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="name@example.com"
                   className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500/50"
                 />
               </div>
-            )}
 
-            {authMode !== "guest" && (
-              <>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-slate-400">Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="name@example.com"
-                    className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500/50"
-                  />
-                </div>
+              <button
+                type="submit"
+                disabled={forgotSubmitting}
+                className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold py-3.5 rounded-xl text-xs transition-all shadow-lg shadow-emerald-950/30 disabled:opacity-50 mt-2"
+              >
+                {forgotSubmitting ? "Đang gửi..." : "Gửi link đặt lại mật khẩu"}
+              </button>
 
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-slate-400">Mật khẩu</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    placeholder="••••••••"
-                    className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500/50"
-                  />
-                </div>
-              </>
-            )}
-
-            <button
-              type="submit"
-              className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold py-3.5 rounded-xl text-xs transition-all shadow-lg shadow-emerald-950/30 mt-2"
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("login");
+                  setForgotError("");
+                  setForgotSuccess("");
+                }}
+                className="text-xs text-slate-400 hover:text-white transition-colors text-center mt-1"
+              >
+                ← Quay lại Đăng nhập
+              </button>
+            </form>
+          ) : (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (authMode === "login") {
+                  await login(email, password);
+                } else if (authMode === "register") {
+                  await register(email, password, displayName);
+                } else {
+                  await guestLogin(displayName || "Khách");
+                }
+              }}
+              className="flex flex-col gap-4"
             >
-              {authMode === "login"
-                ? "Đăng nhập"
-                : authMode === "register"
-                ? "Tạo tài khoản"
-                : "Bắt đầu ngay không cần tạo TK"}
-            </button>
-          </form>
+              {authMode !== "login" && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] text-slate-400">Tên hiển thị</label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="VD: Anh Sếp"
+                    required={authMode === "register"}
+                    className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500/50"
+                  />
+                </div>
+              )}
+
+              {authMode !== "guest" && (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-400">Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      placeholder="name@example.com"
+                      className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500/50"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[11px] text-slate-400">Mật khẩu</label>
+                      {authMode === "login" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthMode("forgot");
+                            setForgotError("");
+                            setForgotSuccess("");
+                          }}
+                          className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors"
+                        >
+                          Quên mật khẩu?
+                        </button>
+                      )}
+                    </div>
+                    <PasswordInput
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500/50"
+                    />
+                  </div>
+                </>
+              )}
+
+              <button
+                type="submit"
+                className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold py-3.5 rounded-xl text-xs transition-all shadow-lg shadow-emerald-950/30 mt-2"
+              >
+                {authMode === "login"
+                  ? "Đăng nhập"
+                  : authMode === "register"
+                  ? "Tạo tài khoản"
+                  : "Bắt đầu ngay không cần tạo TK"}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );

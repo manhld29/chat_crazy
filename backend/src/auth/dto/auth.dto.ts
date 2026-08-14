@@ -61,3 +61,19 @@ export class UpgradeGuestDto {
   @IsNotEmpty()
   display_name: string;
 }
+
+export class ForgotPasswordDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+
+  @IsString()
+  @MinLength(6)
+  new_password: string;
+}

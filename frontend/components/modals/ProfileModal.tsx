@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { UserPublic } from "@/lib/api";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 type ProfileModalProps = {
   user: UserPublic;
@@ -97,8 +98,7 @@ export function ProfileModal({ user, isOpen, onClose, onUpgradeGuest, authError 
 
             <div className="flex flex-col gap-1">
               <label className="text-[11px] text-slate-400">Mật khẩu</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

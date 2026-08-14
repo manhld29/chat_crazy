@@ -17,6 +17,8 @@ import { RedisModule } from "./redis/redis.module";
 import { UsageModule } from "./usage/usage.module";
 import { UsersModule } from "./users/users.module";
 
+import { MailModule } from "./mail/mail.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -31,6 +33,7 @@ import { UsersModule } from "./users/users.module";
     ]),
     PrismaModule,
     RedisModule,
+    MailModule,
     AuthModule,
     UsersModule,
     PersonalitiesModule,

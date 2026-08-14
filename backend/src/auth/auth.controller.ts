@@ -15,19 +15,23 @@ import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { AuthService } from "./auth.service";
 import {
+  ForgotPasswordDto,
   GuestDto,
   LoginDto,
   LogoutDto,
   RefreshDto,
   RegisterDto,
+  ResetPasswordDto,
   UpgradeGuestDto,
 } from "./dto/auth.dto";
+import { MailService } from "../mail/mail.service";
 
 @Controller("auth")
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   private setRefreshCookie(res: Response, refreshToken: string) {
@@ -159,5 +163,17 @@ export class AuthController {
     );
     this.setRefreshCookie(res, tokens.refresh_token);
     return tokens;
+  }
+
+  @Post("forgot-password")
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto, this.mailService);
+  }
+
+  @Post("reset-password")
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 }
