@@ -54,36 +54,60 @@ export function AdminLogin() {
   }
 
   return (
-    <main className="app-main min-h-dvh p-4 text-[var(--foreground)] sm:p-6 lg:p-8 flex items-center justify-center">
-      <form onSubmit={handleSubmit} className="panel w-full max-w-md flex flex-col gap-4">
-        <h1 className="page-title text-center">Đăng nhập Admin</h1>
-        {error && <div className="text-rose-500 text-xs font-medium">⚠️ {error}</div>}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--muted)]">Email / Username</label>
-          <input
-            type="text"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            required
-            className="input"
-          />
+    <main className="min-h-dvh bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
+      <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl flex flex-col gap-6">
+        <div className="flex flex-col items-center text-center gap-2">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center text-2xl font-black shadow-lg shadow-emerald-500/20">
+            ⚡
+          </div>
+          <h1 className="text-2xl font-black tracking-tight text-white mt-2">ChatCrazy Admin Pro</h1>
+          <p className="text-xs text-slate-400">Đăng nhập vào Bảng điều khiển Quản trị Hệ thống</p>
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--muted)]">Mật khẩu</label>
-          <PasswordInput
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="input"
-          />
-        </div>
-        <button type="submit" disabled={submitting} className="primary-button w-full mt-2">
-          {submitting ? "Đang xử lý..." : "Đăng nhập Admin"}
-        </button>
-      </form>
+
+        {error && (
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-2xl text-xs font-medium flex items-center gap-2">
+            ⚠️ {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-300">Email hoặc Username</label>
+            <input
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              required
+              placeholder="admin@example.com"
+              className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-300">Mật khẩu Quản trị</label>
+            <PasswordInput
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="••••••••"
+              className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-2 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 active:opacity-90 text-slate-950 font-bold py-3 rounded-xl text-xs transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+          >
+            {submitting ? "Đang xác thực..." : "Đăng Nhập Quản Trị 🚀"}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }
+
+type ActiveNav = "overview" | "model_config" | "users" | "admins" | "system";
 
 export function AdminDashboard() {
   const router = useRouter();
@@ -92,6 +116,9 @@ export function AdminDashboard() {
     getAdminTokenSnapshot,
     getAdminTokenServerSnapshot,
   );
+
+  const [activeNav, setActiveNav] = useState<ActiveNav>("overview");
+
   const [config, setConfig] = useState<AdminConfigResponse | null>(null);
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(null);
   const [accounts, setAccounts] = useState<AdminAccountUsage[]>([]);
@@ -104,11 +131,9 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Search & Branch Filter state
-  const [activeTab, setActiveTab] = useState<"users" | "admins">("users");
   const [userSearchQuery, setUserSearchQuery] = useState("");
 
-  // Create Admin Form state
+  // Create Admin Modal state
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newAdminUsername, setNewAdminUsername] = useState("");
@@ -178,6 +203,11 @@ export function AdminDashboard() {
 
     return () => clearInterval(interval);
   }, [storedAdminToken, router]);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
+    router.replace("/admin/login");
+  };
 
   async function saveUserLimit(userId: string) {
     setLoading(true);
@@ -321,16 +351,14 @@ export function AdminDashboard() {
 
   if (!storedAdminToken) {
     return (
-      <main className="app-main min-h-dvh p-4 text-[var(--foreground)] sm:p-6 lg:p-8">
-        <section className="panel mx-auto max-w-xl">
-          <h1 className="page-title">Đang kiểm tra phiên admin</h1>
-          <p className="page-subtitle">Bạn sẽ được chuyển về trang đăng nhập nếu chưa có phiên.</p>
-        </section>
+      <main className="min-h-dvh bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl text-center">
+          <p className="text-xs text-slate-400 animate-pulse">Đang tải cấu hình phiên làm việc...</p>
+        </div>
       </main>
     );
   }
 
-  // Separate regular users (excluding admins) and admin users
   const regularUsers = accounts.filter(
     (a) =>
       !a.is_admin &&
@@ -344,148 +372,298 @@ export function AdminDashboard() {
   const adminUsers = accounts.filter((a) => a.is_admin);
 
   return (
-    <main className="app-main min-h-dvh p-4 text-[var(--foreground)] sm:p-6 lg:p-8">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <header className="panel flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="page-title flex items-center gap-3">
-              Bảng quản trị hệ thống
-              <span className="text-[11px] font-normal px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-1.5 animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                Tự làm mới (10s)
-              </span>
-            </h1>
-            <p className="page-subtitle">Xem cấu hình, chỉ số sử dụng và quản lý người dùng toàn hệ thống.</p>
+    <div className="min-h-dvh bg-slate-950 text-slate-100 font-sans flex flex-col md:flex-row">
+      {/* LEFT SIDEBAR NAVIGATION MENU */}
+      <aside className="w-full md:w-64 bg-slate-900/90 border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0 backdrop-blur-xl">
+        <div className="flex flex-col gap-6">
+          {/* Brand logo */}
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center font-black text-lg shadow-lg shadow-emerald-500/20">
+              ⚡
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-sm text-white tracking-tight">ChatCrazy</span>
+              <span className="text-[10px] text-emerald-400 font-mono font-semibold">ADMIN CONTROL</span>
+            </div>
           </div>
-          <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); void loadData(false); }}>
-            <button className="primary-button" disabled={loading} type="submit">
-              {loading ? "Đang làm mới..." : "Làm mới dữ liệu 🔄"}
+
+          {/* Navigation Items */}
+          <nav className="flex flex-col gap-1.5">
+            <NavItem
+              icon="📊"
+              label="Tổng Quan & Visuals"
+              active={activeNav === "overview"}
+              onClick={() => setActiveNav("overview")}
+            />
+            <NavItem
+              icon="🤖"
+              label="Cấu Hình Model AI"
+              active={activeNav === "model_config"}
+              onClick={() => setActiveNav("model_config")}
+              badge={modelConfig?.manual_mode ? "Thủ công" : "Auto Free"}
+            />
+            <NavItem
+              icon="👤"
+              label="Quản Lý Người Dùng"
+              active={activeNav === "users"}
+              onClick={() => setActiveNav("users")}
+              count={accounts.filter((a) => !a.is_admin).length}
+            />
+            <NavItem
+              icon="👑"
+              label="Quản Lý Admin"
+              active={activeNav === "admins"}
+              onClick={() => setActiveNav("admins")}
+              count={adminUsers.length}
+              highlight
+            />
+            <NavItem
+              icon="⚙️"
+              label="Hệ Thống & Metric"
+              active={activeNav === "system"}
+              onClick={() => setActiveNav("system")}
+            />
+          </nav>
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-3">
+          <div className="flex items-center gap-3 px-2 py-1">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-xs flex items-center justify-center">
+              AD
+            </div>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-xs font-semibold text-white truncate">Super Admin</span>
+              <span className="text-[10px] text-slate-400 truncate">Phiên làm việc an toàn</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+          >
+            🚪 Đăng Xuất Admin
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN WORKSPACE CONTENT */}
+      <div className="flex-1 flex flex-col min-w-0 bg-slate-950 overflow-y-auto">
+        {/* TOP BAR HEADER */}
+        <header className="h-16 border-b border-slate-800/80 px-6 flex items-center justify-between bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <h1 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+              {activeNav === "overview" && "📊 Tổng Quan & Chỉ Số Hệ Thống"}
+              {activeNav === "model_config" && "🤖 Cấu Hình Model AI Hệ Thống"}
+              {activeNav === "users" && "👤 Quản Lý Người Dùng Phổ Thông"}
+              {activeNav === "admins" && "👑 Quản Lý Tài Khoản Admin"}
+              {activeNav === "system" && "⚙️ Cấu Hình Kỹ Thuật & Metric"}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-medium px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Auto Sync (10s)
+            </span>
+
+            <button
+              onClick={() => void loadData(false)}
+              disabled={loading}
+              className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {loading ? "Đang tải..." : "🔄 Làm mới"}
             </button>
-          </form>
+          </div>
         </header>
 
-        {error && <div className="panel text-rose-500 font-medium">⚠️ Lỗi: {error}</div>}
-        {actionSuccess && <div className="panel text-emerald-400 font-medium">✅ {actionSuccess}</div>}
+        {/* WORKSPACE VIEW AREA */}
+        <main className="p-6 flex flex-col gap-6 max-w-7xl mx-auto w-full">
+          {error && (
+            <div className="p-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-2xl text-xs font-semibold flex items-center gap-2">
+              ⚠️ Lỗi: {error}
+            </div>
+          )}
 
-        {dashboard && (
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-            <Metric label="Tổng tài khoản" value={String(dashboard.total_users)} />
-            <Metric label="Đã đăng ký" value={String(dashboard.registered_users)} />
-            <Metric label="Khách" value={String(dashboard.guest_users)} />
-            <Metric label="Hội thoại" value={String(dashboard.conversations)} />
-            <Metric label="Tin hôm nay" value={String(dashboard.messages_today)} />
-            <Metric label="Input tokens" value={String(dashboard.input_tokens_today)} />
-            <Metric label="Output tokens" value={String(dashboard.output_tokens_today)} />
-            <Metric label="Request lỗi" value={String(dashboard.failed_requests_today)} />
-          </section>
-        )}
+          {actionSuccess && (
+            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl text-xs font-semibold flex items-center gap-2">
+              ✅ {actionSuccess}
+            </div>
+          )}
 
-        {/* System Model Settings Section */}
-        {modelConfig && (
-          <section className="panel border border-slate-800 bg-slate-900/80">
-            <h2 className="section-title flex items-center gap-2">
-              🤖 Cấu hình Model AI Hệ thống
-            </h2>
-            <p className="mt-1 text-xs text-slate-400">
-              Admin có thể chọn chế độ <strong>Tự động (Free Pool Failover)</strong> hoặc <strong>Cấu hình Thủ công (Manual Model Setting)</strong>.
-            </p>
-
-            {saveModelSuccess && (
-              <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-medium">
-                ✅ {saveModelSuccess}
+          {/* VIEW 1: OVERVIEW DASHBOARD & VISUAL CHARTS */}
+          {activeNav === "overview" && dashboard && (
+            <div className="flex flex-col gap-6">
+              {/* Metric Cards Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                <MetricCard label="Tổng tài khoản" value={dashboard.total_users} icon="👥" color="emerald" />
+                <MetricCard label="Đã đăng ký" value={dashboard.registered_users} icon="✨" color="teal" />
+                <MetricCard label="Khách" value={dashboard.guest_users} icon="👤" color="slate" />
+                <MetricCard label="Hội thoại" value={dashboard.conversations} icon="💬" color="cyan" />
+                <MetricCard label="Tin hôm nay" value={dashboard.messages_today} icon="⚡" color="amber" />
+                <MetricCard label="Input Tokens" value={dashboard.input_tokens_today} icon="📥" color="indigo" />
+                <MetricCard label="Output Tokens" value={dashboard.output_tokens_today} icon="📤" color="purple" />
+                <MetricCard label="Request lỗi" value={dashboard.failed_requests_today} icon="⚠️" color="rose" />
               </div>
-            )}
 
-            <div className="mt-4 flex flex-col gap-4">
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={manualModeDraft}
-                  onChange={(e) => setManualModeDraft(e.target.checked)}
-                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
-                />
-                <span className="text-sm font-bold text-slate-900 bg-white px-2.5 py-1 rounded shadow-sm">
-                  Bật Cấu hình Thủ công (Manual Model Setting)
-                </span>
-              </label>
+              {/* Visual Charts Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Chart 1: Token Usage Bar Visualization */}
+                <div className="lg:col-span-2 bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between backdrop-blur-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        📈 Biểu đồ Token Usage Hôm nay
+                      </h3>
+                      <p className="text-xs text-slate-400">So sánh tỷ lệ Token Nạp vào (Input) và Token Sinh ra (Output)</p>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                      {(dashboard.input_tokens_today + dashboard.output_tokens_today).toLocaleString()} Total Tokens
+                    </span>
+                  </div>
 
-              {manualModeDraft ? (
-                <div className="flex flex-col gap-2 p-3.5 bg-slate-950 border border-slate-800 rounded-xl">
-                  <label className="text-xs text-slate-400 font-medium">Chọn Model cố định cho hệ thống:</label>
-                  <select
-                    value={selectedModelDraft}
-                    onChange={(e) => setSelectedModelDraft(e.target.value)}
-                    className="bg-slate-900 border border-slate-700 text-xs text-white rounded-lg px-3 py-2 outline-none focus:border-emerald-500 font-mono"
-                  >
-                    {modelConfig.available_models.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.id})
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-[11px] text-amber-400 mt-1">
-                    ⚠️ Hệ thống sẽ ưu tiên chạy Model <strong>{selectedModelDraft}</strong> này.
-                  </span>
+                  <TokenBarChart
+                    inputTokens={dashboard.input_tokens_today}
+                    outputTokens={dashboard.output_tokens_today}
+                  />
                 </div>
-              ) : (
-                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300">
-                  ✨ <strong>Đang ở Chế độ Tự động:</strong> Hệ thống tự chọn và luân chuyển các Model Free tốt nhất trong danh sách (OpenRouter Auto Free, Llama 3.3 70B Free, Gemini 2.0 Flash Free, DeepSeek V3, DeepSeek R1...).
+
+                {/* Chart 2: User Distribution Donut Visualization */}
+                <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between backdrop-blur-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      🍩 Cơ Cấu Tài Khoản
+                    </h3>
+                    <span className="text-xs text-slate-400 font-mono">{dashboard.total_users} Users</span>
+                  </div>
+
+                  <UserDistributionDonut
+                    registered={dashboard.registered_users}
+                    guests={dashboard.guest_users}
+                    admins={adminUsers.length}
+                  />
+                </div>
+              </div>
+
+              {/* Quick Model Summary Card */}
+              {modelConfig && (
+                <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl font-bold">
+                      🤖
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-slate-400 font-medium">Model AI Đang Hoạt Động Trên Hệ Thống</span>
+                      <span className="text-base font-black text-white font-mono flex items-center gap-2 mt-0.5">
+                        ⚡ {modelConfig.active_model}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveNav("model_config")}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-emerald-950/20 shrink-0"
+                  >
+                    Thay Đổi Cấu Hình Model ⚙️
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIEW 2: MODEL CONFIGURATION */}
+          {activeNav === "model_config" && modelConfig && (
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
+              <div className="flex flex-col gap-1 border-b border-slate-800 pb-4">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  🤖 Cấu Hình Model AI Hệ Thống
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Admin có thể bật tùy chọn <strong>Thủ công (Manual Model Setting)</strong> để cố định model, hoặc giữ <strong>Tự động (Free Pool Failover)</strong> để hệ thống tự luân chuyển model tốt nhất khi bận.
+                </p>
+              </div>
+
+              {saveModelSuccess && (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-2xl text-xs font-semibold flex items-center gap-2">
+                  ✅ {saveModelSuccess}
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={saveModelConfig}
-                disabled={loading}
-                className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition-colors self-start shadow-md shadow-emerald-950/20 disabled:opacity-50"
-              >
-                {loading ? "Đang lưu..." : "Lưu Cấu Hình Model"}
-              </button>
-            </div>
-          </section>
-        )}
+              <div className="flex flex-col gap-6">
+                {/* Manual Setting Switch */}
+                <div className="flex items-center justify-between bg-slate-950 p-5 rounded-2xl border border-slate-800">
+                  <div className="flex flex-col gap-1">
+                    {/* Explicit Black Label text as requested by user */}
+                    <span className="text-sm font-bold text-slate-900 bg-white px-3 py-1 rounded-lg shadow-sm inline-block self-start">
+                      Bật Cấu hình Thủ công (Manual Model Setting)
+                    </span>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Khi bật, hệ thống sẽ cố định chạy Model bạn chọn bên dưới thay vì tự động chọn model free.
+                    </p>
+                  </div>
 
-        {/* User Management Section with 2 Tabs / Branches */}
-        <section className="panel flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-4 gap-3">
-            <div>
-              <h2 className="section-title">👥 Quản Lý Người Dùng Toàn Hệ Thống</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Phân chia quản lý người dùng phổ thông và danh sách quản trị viên.</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActiveTab("users")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  activeTab === "users"
-                    ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/30"
-                    : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
-                }`}
-              >
-                👤 Người dùng Phổ thông ({accounts.filter((a) => !a.is_admin).length})
-              </button>
-              <button
-                onClick={() => setActiveTab("admins")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  activeTab === "admins"
-                    ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-950/30"
-                    : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
-                }`}
-              >
-                👑 Quản trị viên Admin ({adminUsers.length})
-              </button>
-            </div>
-          </div>
+                  <input
+                    type="checkbox"
+                    checked={manualModeDraft}
+                    onChange={(e) => setManualModeDraft(e.target.checked)}
+                    className="w-6 h-6 accent-emerald-500 rounded cursor-pointer"
+                  />
+                </div>
 
-          {/* Branch 1: Regular Users Management */}
-          {activeTab === "users" && (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-4">
+                {/* Model Selector Box */}
+                {manualModeDraft ? (
+                  <div className="flex flex-col gap-3 p-5 bg-slate-950 border border-slate-800 rounded-2xl">
+                    <label className="text-xs text-slate-300 font-bold">Chọn Model Cố Định Từ Danh Sách:</label>
+                    <select
+                      value={selectedModelDraft}
+                      onChange={(e) => setSelectedModelDraft(e.target.value)}
+                      className="bg-slate-900 border border-slate-700 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500 font-mono"
+                    >
+                      {modelConfig.available_models.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.id})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-xs text-amber-400 font-medium mt-1">
+                      ⚠️ Hệ thống sẽ luôn ưu tiên chạy Model <strong>{selectedModelDraft}</strong> này cho tất cả người dùng.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-300 leading-relaxed">
+                    ✨ <strong>Đang Ở Chế Độ Tự Động (Free Model Failover Pool):</strong> Hệ thống tự chọn và luân chuyển giữa 15 model miễn phí chất lượng cao (OpenRouter Auto Free, Meta Llama 3.3 70B, Google Gemini 2.0 Flash, DeepSeek V3, DeepSeek R1, Gemma 4...). Nếu 1 model bận, hệ thống sẽ tự nhảy sang model khác ngay lập tức.
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={saveModelConfig}
+                  disabled={loading}
+                  className="bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold px-6 py-3 rounded-xl text-xs transition-all self-start shadow-lg shadow-emerald-950/20 disabled:opacity-50"
+                >
+                  {loading ? "Đang lưu cấu hình..." : "Lưu Cấu Hình Model 🚀"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW 3: REGULAR USER MANAGEMENT */}
+          {activeNav === "users" && (
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    👤 Quản Lý Người Dùng Phổ Thông ({regularUsers.length})
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Danh sách các tài khoản khách và tài khoản đã đăng ký (Đã lọc bỏ Admin).</p>
+                </div>
+
                 <input
                   type="text"
                   placeholder="🔍 Tìm theo Tên, Email hoặc Username..."
                   value={userSearchQuery}
                   onChange={(e) => setUserSearchQuery(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 rounded-xl px-4 py-2.5 outline-none focus:border-emerald-500 w-full max-w-md"
+                  className="bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 rounded-xl px-4 py-2.5 outline-none focus:border-emerald-500 w-full sm:w-80"
                 />
               </div>
 
@@ -493,49 +671,54 @@ export function AdminDashboard() {
                 <table className="min-w-[900px] w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400 text-xs font-semibold">
-                      <th className="p-3">Tên & Thông tin</th>
+                      <th className="p-3">Người dùng</th>
                       <th className="p-3">Loại</th>
                       <th className="p-3">Trạng thái</th>
                       <th className="p-3">Hội thoại</th>
                       <th className="p-3">Tin hôm nay</th>
-                      <th className="p-3">Giới hạn/ngày</th>
-                      <th className="p-3">Tokens (In/Out)</th>
+                      <th className="p-3">Giới hạn tin/ngày</th>
+                      <th className="p-3">In/Out Tokens</th>
                       <th className="p-3">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
                     {regularUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-6 text-center text-xs text-slate-500">
-                          Không tìm thấy người dùng phù hợp.
+                        <td colSpan={8} className="p-8 text-center text-xs text-slate-500">
+                          Không tìm thấy người dùng nào phù hợp với tìm kiếm.
                         </td>
                       </tr>
                     ) : (
                       regularUsers.map((account) => (
-                        <tr className="border-b border-slate-800/60 hover:bg-slate-900/40" key={account.user_id}>
+                        <tr className="border-b border-slate-800/60 hover:bg-slate-900/40 transition-colors" key={account.user_id}>
                           <td className="p-3">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-white text-xs">{account.display_name}</span>
-                              <span className="text-[11px] text-slate-400">{account.email ?? account.username ?? "Tài khoản Khách"}</span>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-800 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-700">
+                                {account.display_name.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-white text-xs">{account.display_name}</span>
+                                <span className="text-[11px] text-slate-400">{account.email ?? (account.username ? `@${account.username}` : "Tài khoản Khách")}</span>
+                              </div>
                             </div>
                           </td>
                           <td className="p-3">
-                            <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${account.is_guest ? "bg-slate-800 text-slate-400" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}>
-                              {account.is_guest ? "Khách" : "Thành viên"}
+                            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${account.is_guest ? "bg-slate-800 text-slate-400" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}>
+                              {account.is_guest ? "Khách" : "Đã đăng ký"}
                             </span>
                           </td>
                           <td className="p-3">
-                            <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${account.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"}`}>
-                              {account.is_active ? "🟢 Đang hoạt động" : "🔴 Đã bị khóa"}
+                            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${account.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"}`}>
+                              {account.is_active ? "🟢 Hoạt động" : "🔴 Đã bị khóa"}
                             </span>
                           </td>
-                          <td className="p-3 font-mono text-xs">{account.conversations}</td>
+                          <td className="p-3 font-mono text-xs text-slate-300">{account.conversations}</td>
                           <td className="p-3 font-mono text-xs text-emerald-400 font-bold">{account.messages_today}</td>
                           <td className="p-3">
-                            <div className="flex items-center gap-1.5 min-w-[140px]">
+                            <div className="flex items-center gap-1.5">
                               <input
                                 aria-label={`Giới hạn tin cho ${account.display_name}`}
-                                className="bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-2 py-1 outline-none focus:border-emerald-500 w-20"
+                                className="bg-slate-950 border border-slate-800 text-xs text-white rounded-lg px-2.5 py-1 outline-none focus:border-emerald-500 w-20 font-mono"
                                 min={0}
                                 onChange={(event) =>
                                   setLimitDrafts((current) => ({
@@ -543,12 +726,12 @@ export function AdminDashboard() {
                                     [account.user_id]: event.target.value,
                                   }))
                                 }
-                                placeholder="Theo plan"
+                                placeholder="Mặc định"
                                 type="number"
                                 value={limitDrafts[account.user_id] ?? ""}
                               />
                               <button
-                                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-2 py-1 rounded transition-colors"
+                                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-2 py-1 rounded-lg transition-colors"
                                 disabled={loading}
                                 onClick={() => void saveUserLimit(account.user_id)}
                                 type="button"
@@ -564,7 +747,7 @@ export function AdminDashboard() {
                             <div className="flex items-center gap-1.5">
                               <button
                                 onClick={() => handleToggleStatus(account.user_id, account.is_active)}
-                                className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${
+                                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors ${
                                   account.is_active
                                     ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30"
                                     : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30"
@@ -576,17 +759,17 @@ export function AdminDashboard() {
                               {!account.is_guest && (
                                 <button
                                   onClick={() => handleToggleRole(account.user_id, account.is_admin)}
-                                  className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 text-[10px] font-bold px-2 py-1 rounded transition-colors"
-                                  title="Thêm quyền Admin cho user này"
+                                  className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors"
+                                  title="Thêm quyền Admin"
                                 >
-                                  👑 Thêm Admin
+                                  👑 Nâng Admin
                                 </button>
                               )}
 
                               <button
                                 onClick={() => handleDeleteUser(account.user_id, account.display_name)}
-                                className="bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-[10px] font-bold px-2 py-1 rounded transition-colors"
-                                title="Xóa vĩnh viễn user"
+                                className="bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-[10px] font-bold px-2 py-1 rounded-lg transition-colors"
+                                title="Xóa tài khoản"
                               >
                                 🗑️ Xóa
                               </button>
@@ -601,16 +784,22 @@ export function AdminDashboard() {
             </div>
           )}
 
-          {/* Branch 2: Admin Accounts Management */}
-          {activeTab === "admins" && (
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-slate-400">Danh sách tất cả Quản trị viên có quyền truy cập bảng Admin hệ thống.</p>
+          {/* VIEW 4: ADMIN MANAGEMENT */}
+          {activeNav === "admins" && (
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    👑 Quản Lý Tài Khoản Admin ({adminUsers.length})
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Danh sách Quản trị viên có toàn quyền truy cập bảng Admin hệ thống.</p>
+                </div>
+
                 <button
                   onClick={() => setShowCreateAdminModal(true)}
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-md shadow-amber-950/20 flex items-center gap-1.5"
+                  className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center gap-2"
                 >
-                  ➕ Tạo Tài khoản Admin Mới
+                  ➕ Tạo Tài Khoản Admin Mới
                 </button>
               </div>
 
@@ -628,10 +817,12 @@ export function AdminDashboard() {
                   </thead>
                   <tbody>
                     {adminUsers.map((admin) => (
-                      <tr className="border-b border-slate-800/60 hover:bg-slate-900/40" key={admin.user_id}>
+                      <tr className="border-b border-slate-800/60 hover:bg-slate-900/40 transition-colors" key={admin.user_id}>
                         <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-amber-400 font-bold">👑</span>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-400 font-bold text-xs flex items-center justify-center shrink-0 border border-amber-500/30">
+                              👑
+                            </div>
                             <span className="font-bold text-white text-xs">{admin.display_name}</span>
                           </div>
                         </td>
@@ -642,7 +833,7 @@ export function AdminDashboard() {
                           </div>
                         </td>
                         <td className="p-3">
-                          <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${admin.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
+                          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${admin.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
                             {admin.is_active ? "🟢 Hoạt động" : "🔴 Bị khóa"}
                           </span>
                         </td>
@@ -656,15 +847,15 @@ export function AdminDashboard() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleToggleRole(admin.user_id, admin.is_admin)}
-                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded transition-colors"
-                              title="Gỡ quyền Admin của tài khoản này"
+                              className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors"
+                              title="Hạ cấp quyền Admin"
                             >
-                              🔻 Chuyển thành User thường
+                              🔻 Chuyển thành User
                             </button>
 
                             <button
                               onClick={() => handleToggleStatus(admin.user_id, admin.is_active)}
-                              className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors ${
                                 admin.is_active
                                   ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
                                   : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
@@ -681,33 +872,40 @@ export function AdminDashboard() {
               </div>
             </div>
           )}
-        </section>
 
-        {config && (
-          <section className="panel">
-            <h2 className="section-title">Cấu hình chi tiết hệ thống</h2>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <Info label="Môi trường" value={config.app_env} />
-              <Info label="Ứng dụng" value={`${config.app_name} ${config.app_version}`} />
-              <Info label="Model hiện tại (Đang chạy)" value={config.default_llm_model ?? "Chưa cấu hình"} />
-              <Info label="Model rẻ" value={config.cheap_llm_model ?? "Chưa cấu hình"} />
-              <Info label="Model fallback" value={config.fallback_llm_model ?? "Chưa cấu hình"} />
-              <Info label="Groq" value={config.groq_configured ? "Đã cấu hình" : "Chưa cấu hình"} />
-              <Info label="Redis" value={config.redis_configured ? "Đã cấu hình" : "Không dùng"} />
-              <Info label="Rate limit/phút" value={String(config.rate_limit_per_minute)} />
-              <Info label="Context budget" value={String(config.context_token_budget)} />
+          {/* VIEW 5: SYSTEM HEALTH & CONFIG */}
+          {activeNav === "system" && config && (
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl backdrop-blur-xl flex flex-col gap-6">
+              <div className="flex flex-col gap-1 border-b border-slate-800 pb-4">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  ⚙️ Thông Số Kỹ Thuật & Cấu Hình Hệ Thống
+                </h2>
+                <p className="text-xs text-slate-400">Các thông số cấu hình hạ tầng backend, môi trường và giới hạn tài nguyên.</p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <InfoBox label="Môi Trường Chạy" value={config.app_env} />
+                <InfoBox label="Ứng Dụng" value={`${config.app_name} v${config.app_version}`} />
+                <InfoBox label="Model Đang Chạy" value={config.default_llm_model ?? "Chưa cấu hình"} />
+                <InfoBox label="Model Rẻ (Cheap Model)" value={config.cheap_llm_model ?? "Chưa cấu hình"} />
+                <InfoBox label="Model Dự Phòng (Fallback)" value={config.fallback_llm_model ?? "Chưa cấu hình"} />
+                <InfoBox label="Groq Provider" value={config.groq_configured ? "🟢 Đã Cấu Hình" : "🔴 Chưa Cấu Hình"} />
+                <InfoBox label="Redis Caching" value={config.redis_configured ? "🟢 Đã Cấu Hình" : "⚪ Không Dùng"} />
+                <InfoBox label="Rate Limit" value={`${config.rate_limit_per_minute} req/phút`} />
+                <InfoBox label="Context Token Budget" value={`${config.context_token_budget} Tokens`} />
+              </div>
             </div>
-          </section>
-        )}
+          )}
+        </main>
       </div>
 
-      {/* Modal create new Admin */}
+      {/* CREATE ADMIN MODAL */}
       {showCreateAdminModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 text-slate-200">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-5 text-slate-200">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                👑 Tạo Tài khoản Admin Mới
+                👑 Tạo Tài Khoản Admin Mới
               </h3>
               <button
                 onClick={() => setShowCreateAdminModal(false)}
@@ -717,91 +915,287 @@ export function AdminDashboard() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateAdmin} className="flex flex-col gap-3">
+            <form onSubmit={handleCreateAdmin} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400">Email Admin</label>
+                <label className="text-xs font-semibold text-slate-300">Email Admin</label>
                 <input
                   type="email"
                   required
                   value={newAdminEmail}
                   onChange={(e) => setNewAdminEmail(e.target.value)}
                   placeholder="admin@example.com"
-                  className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-3 py-2 outline-none focus:border-amber-500"
+                  className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400">Username</label>
+                <label className="text-xs font-semibold text-slate-300">Username</label>
                 <input
                   type="text"
                   required
                   value={newAdminUsername}
                   onChange={(e) => setNewAdminUsername(e.target.value)}
                   placeholder="admin_sys"
-                  className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-3 py-2 outline-none focus:border-amber-500"
+                  className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400">Tên hiển thị</label>
+                <label className="text-xs font-semibold text-slate-300">Tên Hiển Thị</label>
                 <input
                   type="text"
                   value={newAdminDisplayName}
                   onChange={(e) => setNewAdminDisplayName(e.target.value)}
                   placeholder="Super Admin"
-                  className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-3 py-2 outline-none focus:border-amber-500"
+                  className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400">Mật khẩu</label>
+                <label className="text-xs font-semibold text-slate-300">Mật Khẩu</label>
                 <PasswordInput
                   value={newAdminPassword}
                   onChange={(e) => setNewAdminPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-3 py-2 outline-none focus:border-amber-500"
+                  className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 mt-3">
+              <div className="flex justify-end gap-2 mt-2">
                 <button
                   type="button"
                   onClick={() => setShowCreateAdminModal(false)}
-                  className="bg-slate-800 text-slate-300 hover:bg-slate-700 px-4 py-2 rounded-xl text-xs"
+                  className="bg-slate-800 text-slate-300 hover:bg-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-md shadow-amber-950/20 disabled:opacity-50"
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition-colors shadow-md shadow-amber-950/20 disabled:opacity-50"
                 >
-                  {loading ? "Đang tạo..." : "Tạo Admin"}
+                  {loading ? "Đang tạo..." : "Tạo Admin 🚀"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </main>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="panel p-3 text-center">
-      <div className="text-[11px] text-[var(--muted)]">{label}</div>
-      <div className="mt-1 text-lg font-bold text-[var(--foreground)]">{value}</div>
     </div>
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+// HELPER COMPONENTS FOR DASHBOARD
+
+function NavItem({
+  icon,
+  label,
+  active,
+  onClick,
+  count,
+  badge,
+  highlight,
+}: {
+  icon: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  count?: number;
+  badge?: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="panel p-3">
-      <div className="text-[11px] text-[var(--muted)]">{label}</div>
-      <div className="mt-1 text-xs font-semibold text-[var(--foreground)]">{value}</div>
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+        active
+          ? highlight
+            ? "bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-950/20"
+            : "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-950/20"
+          : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+      }`}
+    >
+      <div className="flex items-center gap-2.5">
+        <span>{icon}</span>
+        <span>{label}</span>
+      </div>
+
+      {count !== undefined && (
+        <span
+          className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+            active ? "bg-slate-950/20 text-slate-950" : "bg-slate-800 text-slate-300"
+          }`}
+        >
+          {count}
+        </span>
+      )}
+
+      {badge && (
+        <span
+          className={`text-[10px] px-2 py-0.5 rounded-full ${
+            active ? "bg-slate-950/20 text-slate-950 font-bold" : "bg-emerald-500/10 text-emerald-400"
+          }`}
+        >
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: string;
+  color: "emerald" | "teal" | "slate" | "cyan" | "amber" | "indigo" | "purple" | "rose";
+}) {
+  const colorStyles = {
+    emerald: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
+    teal: "border-teal-500/20 bg-teal-500/5 text-teal-400",
+    slate: "border-slate-800 bg-slate-900/60 text-slate-400",
+    cyan: "border-cyan-500/20 bg-cyan-500/5 text-cyan-400",
+    amber: "border-amber-500/20 bg-amber-500/5 text-amber-400",
+    indigo: "border-indigo-500/20 bg-indigo-500/5 text-indigo-400",
+    purple: "border-purple-500/20 bg-purple-500/5 text-purple-400",
+    rose: "border-rose-500/20 bg-rose-500/5 text-rose-400",
+  };
+
+  return (
+    <div className={`border rounded-2xl p-3 flex flex-col justify-between ${colorStyles[color]}`}>
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-[11px] font-medium text-slate-400">{label}</span>
+        <span>{icon}</span>
+      </div>
+      <div className="mt-2 text-base font-black tracking-tight text-white font-mono">
+        {value.toLocaleString()}
+      </div>
+    </div>
+  );
+}
+
+function TokenBarChart({ inputTokens, outputTokens }: { inputTokens: number; outputTokens: number }) {
+  const total = inputTokens + outputTokens || 1;
+  const inputPct = Math.round((inputTokens / total) * 100);
+  const outputPct = Math.round((outputTokens / total) * 100);
+
+  return (
+    <div className="flex flex-col gap-4 py-2">
+      <div className="flex flex-col gap-2">
+        <div className="flex justify-between text-xs font-semibold">
+          <span className="text-indigo-400 flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+            Input Tokens: {inputTokens.toLocaleString()} ({inputPct}%)
+          </span>
+          <span className="text-purple-400 flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+            Output Tokens: {outputTokens.toLocaleString()} ({outputPct}%)
+          </span>
+        </div>
+
+        {/* Stacked Bar */}
+        <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden flex p-0.5 border border-slate-800">
+          <div
+            style={{ width: `${Math.max(inputPct, 2)}%` }}
+            className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-l-full transition-all duration-500"
+            title={`Input: ${inputTokens}`}
+          />
+          <div
+            style={{ width: `${Math.max(outputPct, 2)}%` }}
+            className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-r-full transition-all duration-500"
+            title={`Output: ${outputTokens}`}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserDistributionDonut({
+  registered,
+  guests,
+  admins,
+}: {
+  registered: number;
+  guests: number;
+  admins: number;
+}) {
+  const total = registered + guests + admins || 1;
+  const regPct = Math.round((registered / total) * 100);
+  const guestPct = Math.round((guests / total) * 100);
+  const adminPct = Math.round((admins / total) * 100);
+
+  return (
+    <div className="flex flex-col gap-4 py-2 items-center">
+      {/* SVG Donut */}
+      <div className="relative w-28 h-28 flex items-center justify-center">
+        <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+          <path
+            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none"
+            stroke="#1e293b"
+            strokeWidth="3.8"
+          />
+          <path
+            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none"
+            stroke="#10b981"
+            strokeWidth="3.8"
+            strokeDasharray={`${regPct}, 100`}
+          />
+          <path
+            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none"
+            stroke="#f59e0b"
+            strokeWidth="3.8"
+            strokeDasharray={`${adminPct}, 100`}
+            strokeDashoffset={`-${regPct}`}
+          />
+        </svg>
+        <div className="absolute flex flex-col items-center">
+          <span className="text-base font-black text-white font-mono">{total}</span>
+          <span className="text-[9px] text-slate-400">Tài khoản</span>
+        </div>
+      </div>
+
+      {/* Legend list */}
+      <div className="w-full flex flex-col gap-1.5 text-xs font-semibold">
+        <div className="flex justify-between items-center text-emerald-400">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Đã đăng ký
+          </span>
+          <span className="font-mono">{registered} ({regPct}%)</span>
+        </div>
+        <div className="flex justify-between items-center text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-slate-600"></span>
+            Khách
+          </span>
+          <span className="font-mono">{guests} ({guestPct}%)</span>
+        </div>
+        <div className="flex justify-between items-center text-amber-400">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            Admin
+          </span>
+          <span className="font-mono">{admins} ({adminPct}%)</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col gap-1">
+      <span className="text-[11px] text-slate-400 font-medium">{label}</span>
+      <span className="text-xs font-bold text-white font-mono">{value}</span>
     </div>
   );
 }
