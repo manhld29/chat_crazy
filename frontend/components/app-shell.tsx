@@ -241,9 +241,16 @@ export function AppShell({
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[11px] text-slate-400">Mật khẩu</label>
-                      {authMode === "login" && (
+                    <label className="text-[11px] text-slate-400">Mật khẩu</label>
+                    <PasswordInput
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500/50"
+                    />
+                    {authMode === "login" && (
+                      <div className="flex justify-end mt-1">
                         <button
                           type="button"
                           onClick={() => {
@@ -255,15 +262,8 @@ export function AppShell({
                         >
                           Quên mật khẩu?
                         </button>
-                      )}
-                    </div>
-                    <PasswordInput
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      placeholder="••••••••"
-                      className="bg-slate-950 border border-slate-800 text-xs text-white rounded-xl px-4 py-3 outline-none focus:border-emerald-500/50"
-                    />
+                      </div>
+                    )}
                   </div>
                 </>
               )}
