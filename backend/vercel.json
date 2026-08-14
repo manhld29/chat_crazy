@@ -1,4 +1,5 @@
 {
+  "entrypoint": "api/index.ts",
   "buildCommand": "npm run vercel-build",
   "rewrites": [
     {
