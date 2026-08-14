@@ -18,8 +18,6 @@ export class WebSearchService {
 
   async search(query: string, numResults: number = 5): Promise<SearchResult[]> {
     const tavilyKey = this.configService.get<string>("tavilyApiKey");
-    const googleKey = this.configService.get<string>("googleSearchApiKey");
-    const googleCx = this.configService.get<string>("googleSearchCx");
     const tinyfishKey = this.configService.get<string>("tinyfishApiKey");
 
     // Tier 1: Tavily Search API (High Quality AI Search)
@@ -40,40 +38,7 @@ export class WebSearchService {
       }
     }
 
-    // Tier 2: Google Custom Search API
-    if (googleKey && googleCx) {
-      try {
-        const rawResponse = await this.fetchGoogleCustomSearch(
-          query,
-          googleKey,
-          googleCx,
-        );
-        if (
-          rawResponse &&
-          Array.isArray(rawResponse.items) &&
-          rawResponse.items.length > 0
-        ) {
-          const formatted = rawResponse.items
-            .slice(0, numResults)
-            .map((item: any) => ({
-              title: this.cleanText(item.title || "No Title"),
-              snippet: this.cleanText(item.snippet || ""),
-              url: this.sanitizeUrl(item.link || ""),
-            }))
-            .filter((res: SearchResult) => res.url !== "");
-
-          if (formatted.length > 0) {
-            return formatted;
-          }
-        }
-      } catch (err: any) {
-        this.logger.warn(
-          `Google Custom Search API failed: ${err.message}. Falling back to next search provider.`,
-        );
-      }
-    }
-
-    // Tier 3: TinyFish Search API
+    // Tier 2: TinyFish Search API
     if (tinyfishKey) {
       try {
         const tfResults = await this.fetchTinyFishSearch(
@@ -91,7 +56,7 @@ export class WebSearchService {
       }
     }
 
-    // Tier 4: DuckDuckGo Lite POST with full browser headers
+    // Tier 3: DuckDuckGo Lite POST with full browser headers
     try {
       const ddgResults = await this.fallbackSearch(query, numResults);
       if (ddgResults && ddgResults.length > 0) {
@@ -101,7 +66,7 @@ export class WebSearchService {
       this.logger.warn(`DuckDuckGo fallback search failed: ${err.message}`);
     }
 
-    // Tier 5: Wikipedia Open Search API fallback
+    // Tier 4: Wikipedia Open Search API fallback
     try {
       const wikiResults = await this.wikipediaSearch(query, numResults);
       if (wikiResults && wikiResults.length > 0) {
@@ -141,19 +106,6 @@ export class WebSearchService {
         .filter((res: SearchResult) => res.url !== "");
     }
     return [];
-  }
-
-  private async fetchGoogleCustomSearch(
-    query: string,
-    apiKey: string,
-    cx: string,
-  ): Promise<any> {
-    const searchUrl = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(
-      apiKey,
-    )}&cx=${encodeURIComponent(cx)}&q=${encodeURIComponent(query)}`;
-
-    const responseText = await this.httpGet(searchUrl);
-    return JSON.parse(responseText);
   }
 
   private async fetchTinyFishSearch(

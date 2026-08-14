@@ -11,8 +11,6 @@ export default () => ({
 
   groqApiKey: process.env.GROQ_API_KEY || "",
   groqBaseUrl: process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1",
-  googleSearchApiKey: process.env.GOOGLE_SEARCH_API_KEY || "",
-  googleSearchCx: process.env.GOOGLE_SEARCH_CX || "",
   tinyfishApiKey: process.env.TINYFISH_API_KEY || "",
   tavilyApiKey:
     process.env.TAVILY_API_KEY ||

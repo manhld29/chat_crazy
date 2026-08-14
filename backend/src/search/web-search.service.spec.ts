@@ -7,8 +7,6 @@ describe("WebSearchService", () => {
 
   const mockConfigService = {
     get: jest.fn((key: string): any => {
-      if (key === "googleSearchApiKey") return "test-api-key";
-      if (key === "googleSearchCx") return "test-cx";
       if (key === "tinyfishApiKey") return "test-tinyfish-key";
       if (key === "tavilyApiKey") return "test-tavily-key";
       return null;
@@ -53,40 +51,7 @@ describe("WebSearchService", () => {
       expect(results[0].title).toBe("Tavily Search Result");
     });
 
-    it("should return formatted search results when Google Custom Search API succeeds", async () => {
-      mockConfigService.get.mockImplementation((key: string): any => {
-        if (key === "googleSearchApiKey") return "test-api-key";
-        if (key === "googleSearchCx") return "test-cx";
-        return "";
-      });
-
-      const mockGoogleResponse = {
-        items: [
-          {
-            title: "Hà Nội - Wikipedia",
-            snippet: "Hà Nội là thủ đô của Nước Cộng hòa Xã hội Chủ nghĩa Việt Nam...",
-            link: "https://vi.wikipedia.org/wiki/H%C3%A0_N%E1%BB%99i",
-          },
-          {
-            title: "Tin tức Hà Nội mới nhất",
-            snippet: "Cập nhật tin tức Hà Nội hôm nay...",
-            link: "https://hanoimoi.vn",
-          },
-        ],
-      };
-
-      jest.spyOn(service as any, "fetchGoogleCustomSearch").mockResolvedValue(mockGoogleResponse);
-
-      const results = await service.search("Thời tiết Hà Nội");
-      expect(results).toHaveLength(2);
-      expect(results[0]).toEqual({
-        title: "Hà Nội - Wikipedia",
-        snippet: "Hà Nội là thủ đô của Nước Cộng hòa Xã hội Chủ nghĩa Việt Nam...",
-        url: "https://vi.wikipedia.org/wiki/H%C3%A0_N%E1%BB%99i",
-      });
-    });
-
-    it("should return TinyFish API search results when Google Search is unconfigured", async () => {
+    it("should return TinyFish API search results when Tavily Search is unconfigured", async () => {
       mockConfigService.get.mockImplementation((key: string): any => {
         if (key === "tinyfishApiKey") return "test-tinyfish-key";
         return "";
