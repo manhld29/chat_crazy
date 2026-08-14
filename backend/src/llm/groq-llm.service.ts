@@ -6,13 +6,13 @@ import { URL } from "url";
 import { LLMRequest, LLMUsage } from "./llm.types";
 
 export const DEFAULT_FREE_MODEL_POOL = [
-  "llama-3.3-70b-versatile",
   "meta-llama/llama-3.3-70b-instruct:free",
   "google/gemini-2.0-flash-exp:free",
   "deepseek/deepseek-chat:free",
   "deepseek/deepseek-r1:free",
   "qwen/qwen-2.5-coder-32b-instruct:free",
   "mistralai/mistral-7b-instruct:free",
+  "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",
 ] as const;
 

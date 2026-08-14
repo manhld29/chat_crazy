@@ -42,6 +42,7 @@ Tài liệu hướng dẫn chi tiết cách triển khai ứng dụng **Chat Cra
 | `DATABASE_URL` | `postgres://user:pass@us-east-1.sql.xata.sh/chat-crazy:main?sslmode=require` |
 | `JWT_SECRET_KEY` | `super-secret-key-minimum-32-characters-long` |
 | `GROQ_API_KEY` | `gsk_...` (API Key từ Groq Console) |
+| `OPENROUTER_API_KEY` | `sk-or-v1-...` (API Key từ OpenRouter Gateway - Tùy chọn) |
 | `FRONTEND_ORIGINS` | `*` hoặc `https://chat-crazy.vercel.app` |
 | `APP_ENV` | `production` |
 
