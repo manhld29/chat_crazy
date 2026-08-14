@@ -8,6 +8,7 @@ import { ConfigService } from "@nestjs/config";
 import { User } from "@prisma/client";
 import { AuthService } from "../auth/auth.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { RedisService } from "../redis/redis.service";
 import { AdminLoginDto, UpdateUserLimitDto } from "./dto/admin.dto";
 
 @Injectable()
@@ -16,6 +17,7 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {}
 
   async adminLogin(dto: AdminLoginDto, userAgent?: string, ipAddress?: string) {
@@ -56,7 +58,7 @@ export class AdminService {
       cheap_llm_model: this.configService.get("cheapLlmModel"),
       fallback_llm_model: this.configService.get("fallbackLlmModel"),
       groq_configured: !!this.configService.get("groqApiKey"),
-      redis_configured: false,
+      redis_configured: this.redisService.isConfigured(),
       metrics_enabled: this.configService.get<boolean>("metricsEnabled", true),
       context_token_budget: this.configService.get<number>(
         "contextTokenBudget",

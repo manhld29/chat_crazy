@@ -4,6 +4,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { User } from "@prisma/client";
 import { AuthService } from "../auth/auth.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { RedisService } from "../redis/redis.service";
 import { AdminService } from "./admin.service";
 
 describe("AdminService", () => {
@@ -46,6 +47,13 @@ describe("AdminService", () => {
     }),
   };
 
+  const mockRedisService = {
+    isConfigured: jest.fn(() => true),
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -53,6 +61,7 @@ describe("AdminService", () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: AuthService, useValue: mockAuthService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: RedisService, useValue: mockRedisService },
       ],
     }).compile();
 
@@ -73,6 +82,7 @@ describe("AdminService", () => {
       expect(result).toHaveProperty("app_env", "development");
       expect(result).toHaveProperty("app_name", "Funny Chatbot API");
       expect(result).toHaveProperty("groq_configured", true);
+      expect(result).toHaveProperty("redis_configured", true);
     });
   });
 });

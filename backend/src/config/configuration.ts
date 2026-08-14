@@ -39,6 +39,8 @@ export default () => ({
     process.env.FRONTEND_ORIGINS || "http://localhost:3000"
   ).split(","),
   logLevel: process.env.LOG_LEVEL || "INFO",
+  upstashRedisRestUrl: process.env.UPSTASH_REDIS_REST_URL || "",
+  upstashRedisRestToken: process.env.UPSTASH_REDIS_REST_TOKEN || "",
   metricsEnabled: process.env.METRICS_ENABLED !== "false",
   metricsToken: process.env.METRICS_TOKEN || "",
   rateLimitPerMinute: parseInt(process.env.RATE_LIMIT_PER_MINUTE || "60", 10),

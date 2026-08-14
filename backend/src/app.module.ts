@@ -13,6 +13,7 @@ import { MessagesModule } from "./messages/messages.module";
 import { ObservabilityModule } from "./observability/observability.module";
 import { PersonalitiesModule } from "./personalities/personalities.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { RedisModule } from "./redis/redis.module";
 import { UsageModule } from "./usage/usage.module";
 import { UsersModule } from "./users/users.module";
 
@@ -29,6 +30,7 @@ import { UsersModule } from "./users/users.module";
       },
     ]),
     PrismaModule,
+    RedisModule,
     AuthModule,
     UsersModule,
     PersonalitiesModule,
