@@ -48,8 +48,9 @@ export function CreateConversationModal({
       setAiNickname("");
       setFirstMessage("");
       onClose();
-    } catch (err: any) {
-      setError(err?.message || "Không thể tạo cuộc trò chuyện. Vui lòng thử lại.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Không thể tạo cuộc trò chuyện. Vui lòng thử lại.";
+      setError(message);
     } finally {
       setSubmitting(false);
     }

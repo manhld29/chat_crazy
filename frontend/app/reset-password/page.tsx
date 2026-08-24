@@ -43,11 +43,12 @@ function ResetPasswordForm() {
         new_password: newPassword,
       });
       setSuccess(res.message);
-    } catch (err: any) {
-      setError(
-        err?.message ||
-          "Đặt lại mật khẩu thất bại. Link có thể đã hết hạn (hiệu lực 10 phút) hoặc đã được sử dụng.",
-      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Đặt lại mật khẩu thất bại. Link có thể đã hết hạn (hiệu lực 10 phút) hoặc đã được sử dụng.";
+      setError(message);
     } finally {
       setLoading(false);
     }

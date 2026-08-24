@@ -1,7 +1,7 @@
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
-import cookieParser from "cookie-parser";
+import * as cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 import { GlobalHttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { RequestIdInterceptor } from "./common/interceptors/request-id.interceptor";

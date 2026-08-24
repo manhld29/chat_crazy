@@ -29,8 +29,19 @@ export function useConversations(token: string | null, initialConvId?: string) {
   const [personalities, setPersonalities] = useState<Personality[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(initialConvId || null);
   const [showArchived, setShowArchived] = useState(false);
-  const [backgrounds, setBackgrounds] = useState<Record<string, BackgroundTemplate>>(loadBackgrounds);
+  const [backgrounds, setBackgrounds] = useState<Record<string, BackgroundTemplate>>({});
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(BACKGROUND_KEY) ?? "{}");
+      if (typeof parsed === "object" && parsed !== null) {
+        setBackgrounds(parsed);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
 
   const fetchConversations = useCallback(
     async (incArchived = showArchived) => {

@@ -19,7 +19,7 @@ function runMigration() {
   }
 
   console.log(
-    `🚀 [Migration] Executing Prisma database migrations against PostgreSQL / Xata.io...`
+    `🚀 [Migration] Executing Prisma database migrations against PostgreSQL / Aiven Cloud Database...`
   );
 
   try {

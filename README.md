@@ -9,7 +9,7 @@ Monorepo ứng dụng AI Chatbot tiếng Việt hài hước, thông minh và ph
 Hệ thống tài liệu hướng dẫn kỹ thuật chi tiết trong thư mục [`docs/`](docs/):
 
 * 🏗️ **[Kiến trúc Hệ thống (Architecture)](docs/architecture.md)**: Sơ đồ tổng quan kiến trúc Monorepo, NestJS Backend modules, Prisma ORM, Auth JWT + Argon2, Web Search Tool, SSE Streaming, Memory Context và Safety Policy.
-* 🚀 **[Hướng dẫn Deployment Vercel & Xata DB](docs/VERCEL_DEPLOYMENT.md)**: Hướng dẫn chi tiết cách triển khai Monorepo lên nền tảng Vercel, cấu hình Cloud Database Xata.io PostgreSQL và tự động thực thi Prisma Migration khi deploy.
+* 🚀 **[Hướng dẫn Deployment Vercel & Aiven DB](docs/VERCEL_DEPLOYMENT.md)**: Hướng dẫn chi tiết cách triển khai Monorepo lên nền tảng Vercel, cấu hình Cloud Database Aiven PostgreSQL và tự động thực thi Prisma Migration khi deploy.
 
 ---
 
@@ -21,7 +21,7 @@ Hệ thống tài liệu hướng dẫn kỹ thuật chi tiết trong thư mục
 
 ### 🔹 Database & Storage Services
 * **Prisma ORM 5**: Quản lý Data Schema, Type-safe client và cơ chế Auto Migration (`scripts/migrate-db.js`).
-* **Xata.io PostgreSQL (Production)**: Cloud Serverless PostgreSQL Database kết nối qua SSL endpoint.
+* **Aiven PostgreSQL (Production)**: Cloud Managed PostgreSQL Database kết nối an toàn qua SSL endpoint.
 * **PostgreSQL 16 (Local)**: Chạy qua Docker Compose (`docker-compose.yml`).
 * **Upstash Redis**: Serverless Redis REST API (`@upstash/redis`) phục vụ Rate Limiting và session caching.
 
@@ -43,7 +43,7 @@ cp backend/.env.example backend/.env
 ```
 
 Các biến môi trường chính trong `backend/.env`:
-* `DATABASE_URL`: Chuỗi kết nối PostgreSQL (Xata.io / Supabase / Local Docker).
+* `DATABASE_URL`: Chuỗi kết nối PostgreSQL (Aiven / Supabase / Local Docker).
 * `GROQ_API_KEY`: API Key kết nối Groq Cloud LLM.
 * `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`: API Key và Base URL kết nối OpenRouter AI Gateway.
 * `TAVILY_API_KEY`: API Key tìm kiếm Web cho AI (tùy chọn, tự động fallback nếu không cấu hình).
@@ -61,7 +61,7 @@ make install
 ```
 *(Hoặc `cd backend && npm install && npx prisma generate` và `cd frontend && npm install`)*
 
-### 2. Khởi chạy Database Local (nếu không dùng Xata.io)
+### 2. Khởi chạy Database Local (nếu không dùng Aiven Database)
 ```bash
 make compose-up
 ```

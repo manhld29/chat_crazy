@@ -14,7 +14,7 @@ NestJS backend (Vercel Serverless / Node.js)
    +-- Groq API & OpenRouter API (LLM Providers)
    +-- Tavily / TinyFish API (Web Search Engine)
    +-- SMTP Mailer (Nodemailer)
-   +-- PostgreSQL (Prisma ORM / Xata.io / Supabase)
+   +-- PostgreSQL (Prisma ORM / Aiven / Supabase)
    +-- Upstash Redis (Serverless REST API, Optional)
 ```
 
@@ -40,7 +40,7 @@ NestJS backend (Vercel Serverless / Node.js)
 
 ## Local & Cloud Deployment Model
 
-- **PostgreSQL**: Local chạy qua Docker Compose (`postgres:16-alpine`); Production triển khai trên **Xata.io** hoặc Supabase với Prisma auto-migration (`node scripts/migrate-db.js`).
+- **PostgreSQL**: Local chạy qua Docker Compose (`postgres:16-alpine`); Production triển khai trên **Aiven PostgreSQL** hoặc Supabase với Prisma auto-migration (`node scripts/migrate-db.js`).
 - **Redis**: Local chạy qua Docker Compose (`redis:7-alpine`); Production sử dụng **Upstash Redis REST API**.
 - **Serverless Hosting**: Triển khai trên **Vercel** với single monorepo project (Frontend Next.js + Backend NestJS Serverless Handler tại `/api/*`).
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
+import { FormEvent, useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import {
   AdminAccountUsage,
@@ -141,54 +141,57 @@ export function AdminDashboard() {
   const [newAdminPassword, setNewAdminPassword] = useState("");
   const [newAdminDisplayName, setNewAdminDisplayName] = useState("");
 
-  const loadData = async (isSilent = false) => {
-    if (!storedAdminToken) return;
-    if (!isSilent) {
-      setLoading(true);
-      setError("");
-      setSaveModelSuccess("");
-    }
-    try {
-      const token = storedAdminToken;
-      const [nextConfig, nextDashboard, nextAccounts, nextModelConfig] = await Promise.all([
-        api.adminConfig(token),
-        api.adminDashboard(token),
-        api.adminAccounts(token),
-        api.adminModelConfig(token),
-      ]);
-      setConfig(nextConfig);
-      setDashboard(nextDashboard);
-      setAccounts(nextAccounts.items);
-      setModelConfig(nextModelConfig);
-
+  const loadData = useCallback(
+    async (isSilent = false) => {
+      if (!storedAdminToken) return;
       if (!isSilent) {
-        setManualModeDraft(nextModelConfig.manual_mode);
-        setSelectedModelDraft(nextModelConfig.selected_model);
+        setLoading(true);
+        setError("");
+        setSaveModelSuccess("");
       }
+      try {
+        const token = storedAdminToken;
+        const [nextConfig, nextDashboard, nextAccounts, nextModelConfig] = await Promise.all([
+          api.adminConfig(token),
+          api.adminDashboard(token),
+          api.adminAccounts(token),
+          api.adminModelConfig(token),
+        ]);
+        setConfig(nextConfig);
+        setDashboard(nextDashboard);
+        setAccounts(nextAccounts.items);
+        setModelConfig(nextModelConfig);
 
-      setLimitDrafts((current) => {
-        const newDrafts = { ...current };
-        for (const account of nextAccounts.items) {
-          if (newDrafts[account.user_id] === undefined) {
-            newDrafts[account.user_id] = account.daily_message_limit?.toString() ?? "";
-          }
+        if (!isSilent) {
+          setManualModeDraft(nextModelConfig.manual_mode);
+          setSelectedModelDraft(nextModelConfig.selected_model);
         }
-        return newDrafts;
-      });
-    } catch (unknownError) {
-      if (!isSilent) {
-        setError(
-          unknownError instanceof ApiError || unknownError instanceof Error
-            ? unknownError.message
-            : "Không tải được dữ liệu admin",
-        );
+
+        setLimitDrafts((current) => {
+          const newDrafts = { ...current };
+          for (const account of nextAccounts.items) {
+            if (newDrafts[account.user_id] === undefined) {
+              newDrafts[account.user_id] = account.daily_message_limit?.toString() ?? "";
+            }
+          }
+          return newDrafts;
+        });
+      } catch (unknownError) {
+        if (!isSilent) {
+          setError(
+            unknownError instanceof ApiError || unknownError instanceof Error
+              ? unknownError.message
+              : "Không tải được dữ liệu admin",
+          );
+        }
+      } finally {
+        if (!isSilent) {
+          setLoading(false);
+        }
       }
-    } finally {
-      if (!isSilent) {
-        setLoading(false);
-      }
-    }
-  };
+    },
+    [storedAdminToken],
+  );
 
   useEffect(() => {
     if (!storedAdminToken) {
@@ -196,14 +199,22 @@ export function AdminDashboard() {
       return;
     }
 
-    void loadData(false);
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) {
+        void loadData(false);
+      }
+    });
 
     const interval = setInterval(() => {
       void loadData(true);
     }, 10000);
 
-    return () => clearInterval(interval);
-  }, [storedAdminToken, router]);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [storedAdminToken, router, loadData]);
 
   const handleLogout = () => {
     sessionStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);

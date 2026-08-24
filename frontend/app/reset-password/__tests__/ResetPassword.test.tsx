@@ -45,7 +45,7 @@ describe('ResetPasswordPage', () => {
   });
 
   it('submits reset password request successfully', async () => {
-    (api.resetPassword as any).mockResolvedValueOnce({
+    vi.mocked(api.resetPassword).mockResolvedValueOnce({
       message: 'Đặt lại mật khẩu thành công.',
     });
 

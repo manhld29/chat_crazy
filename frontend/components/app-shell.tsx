@@ -76,8 +76,14 @@ export function AppShell({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-xs">
-        Đang khởi động Chat Crazy...
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4 text-slate-400">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-teal-400/20 border border-emerald-500/40 flex items-center justify-center text-2xl shadow-lg animate-pulse">
+          🤪
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          Đang khởi động Chat Crazy...
+        </div>
       </div>
     );
   }
@@ -145,8 +151,9 @@ export function AppShell({
                 try {
                   const res = await api.forgotPassword({ email });
                   setForgotSuccess(res.message);
-                } catch (err: any) {
-                  setForgotError(err?.message || "Có lỗi xảy ra, vui lòng thử lại.");
+                } catch (err: unknown) {
+                  const message = err instanceof Error ? err.message : "Có lỗi xảy ra, vui lòng thử lại.";
+                  setForgotError(message);
                 } finally {
                   setForgotSubmitting(false);
                 }

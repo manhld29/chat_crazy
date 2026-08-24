@@ -1,6 +1,6 @@
-# Hướng dẫn Triển khai Chat Crazy lên Vercel & Kết nối Xata.io Database
+# Hướng dẫn Triển khai Chat Crazy lên Vercel & Kết nối Aiven PostgreSQL Database
 
-Tài liệu hướng dẫn chi tiết cách triển khai ứng dụng **Chat Crazy** (bao gồm NestJS Backend và Next.js Frontend) lên nền tảng **Vercel** và tự động cập nhật Migration Database với **Xata.io**.
+Tài liệu hướng dẫn chi tiết cách triển khai ứng dụng **Chat Crazy** (bao gồm NestJS Backend và Next.js Frontend) lên nền tảng **Vercel** và tự động cập nhật Migration Database với **Aiven PostgreSQL**.
 
 ---
 
@@ -14,22 +14,22 @@ Tài liệu hướng dẫn chi tiết cách triển khai ứng dụng **Chat Cra
 
 ---
 
-## ⚡ Tự động chạy Migration trên Xata.io khi Deploy
+## ⚡ Tự động chạy Migration trên Aiven khi Deploy
 
 Ứng dụng đã được tích hợp script tự động kiểm tra và thực thi migration mới trong quá trình build trên Vercel (`node scripts/migrate-db.js`):
-1. Mỗi khi bạn đẩy code mới có migration mới trong `backend/prisma/migrations/`, Vercel Build Step sẽ tự động kết nối với **Xata.io PostgreSQL** và chạy `npx prisma migrate deploy`.
+1. Mỗi khi bạn đẩy code mới có migration mới trong `backend/prisma/migrations/`, Vercel Build Step sẽ tự động kết nối với **Aiven PostgreSQL** và chạy `npx prisma migrate deploy`.
 2. Nếu không có migration mới, hệ thống sẽ bỏ qua và tiếp tục build ứng dụng.
-3. Nếu môi trường local không có `DATABASE_URL` kết nối Xata.io, script sẽ thông báo bỏ qua migration và không làm gián đoạn việc phát triển cục bộ.
+3. Nếu môi trường local không có `DATABASE_URL` kết nối Aiven, script sẽ thông báo bỏ qua migration và không làm gián đoạn việc phát triển cục bộ.
 
 ---
 
-## 🚀 Các bước triển khai lên Vercel kết nối Xata.io
+## 🚀 Các bước triển khai lên Vercel kết nối Aiven
 
-### Bước 1: Lấy DATABASE_URL từ Xata.io
-1. Đăng nhập vào [Xata.io Workspace](https://app.xata.io).
-2. Tạo hoặc chọn Database của bạn (ví dụ: `chat-crazy`).
-3. Vào mục **Database Settings** -> **PostgreSQL endpoint** (hoặc **Connect**).
-4. Copy chuỗi kết nối PostgreSQL (có dạng: `postgres://user:password@us-east-1.sql.xata.sh/chat-crazy:main?sslmode=require`).
+### Bước 1: Lấy Service URI từ Aiven Console
+1. Đăng nhập vào [Aiven Console](https://console.aiven.io).
+2. Chọn Service PostgreSQL của bạn (ví dụ: `pg-3509da72`).
+3. Trong tab **Overview**, tìm mục **Connection information**.
+4. Sao chép **Service URI** (có dạng: `postgres://avnadmin:password@pg-3509da72-project.aivencloud.com:port/defaultdb?sslmode=require`).
 
 ### Bước 2: Tạo Dự án trên Vercel
 1. Đăng nhập vào [Vercel Dashboard](https://vercel.com).
@@ -39,7 +39,7 @@ Tài liệu hướng dẫn chi tiết cách triển khai ứng dụng **Chat Cra
 
 | Tên biến môi trường | Giá trị ví dụ / Mô tả |
 | :--- | :--- |
-| `DATABASE_URL` | `postgres://user:pass@us-east-1.sql.xata.sh/chat-crazy:main?sslmode=require` |
+| `DATABASE_URL` | `postgres://avnadmin:pass@host.aivencloud.com:port/defaultdb?sslmode=require` |
 | `JWT_SECRET_KEY` | `super-secret-key-minimum-32-characters-long` |
 | `GROQ_API_KEY` | `gsk_...` (API Key từ Groq Console) |
 | `OPENROUTER_API_KEY` | `sk-or-v1-...` (API Key từ OpenRouter Gateway - Tùy chọn) |
@@ -48,19 +48,19 @@ Tài liệu hướng dẫn chi tiết cách triển khai ứng dụng **Chat Cra
 
 5. Nhấn **Deploy**. Vercel sẽ tự động:
    - Sinh Prisma Client (`prisma generate`)
-   - Tự động thực thi Migration DB lên **Xata.io** (`node scripts/migrate-db.js`)
+   - Tự động thực thi Migration DB lên **Aiven PostgreSQL** (`node scripts/migrate-db.js`)
    - Build serverless handler `api/index.ts` cho NestJS
    - Build Next.js app trong `frontend/`
 
 ---
 
-## 🗄️ Khởi tạo dữ liệu mẫu (Seed Data) cho Xata.io
+## 🗄️ Khởi tạo dữ liệu mẫu (Seed Data) cho Aiven
 
-Nếu muốn khởi tạo dữ liệu mặc định (Personalities AI) cho cơ sở dữ liệu Xata.io mới:
+Nếu muốn khởi tạo dữ liệu mặc định (Personalities AI) cho cơ sở dữ liệu Aiven mới:
 ```bash
 cd backend
-# Đặt DATABASE_URL trỏ tới Xata.io và chạy seed:
-DATABASE_URL="postgres://..." npx ts-node prisma/seed.ts
+# Đặt DATABASE_URL trỏ tới Aiven và chạy seed:
+DATABASE_URL="postgres://avnadmin:..." npx ts-node prisma/seed.ts
 ```
 
 ---

@@ -13,20 +13,8 @@ export type StoredSession = {
 };
 
 export function useAuth() {
-  const [session, setSession] = useState<StoredSession | null>(() => {
-    if (typeof window === "undefined") return null;
-    const savedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-    const savedUser = localStorage.getItem(USER_KEY);
-    if (savedToken && savedUser) {
-      try {
-        const user = JSON.parse(savedUser) as UserPublic;
-        return { accessToken: savedToken, refreshToken: null, user };
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [session, setSession] = useState<StoredSession | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -41,6 +29,21 @@ export function useAuth() {
     setSession(null);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const savedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+      const savedUser = localStorage.getItem(USER_KEY);
+      if (savedToken && savedUser) {
+        const user = JSON.parse(savedUser) as UserPublic;
+        setSession({ accessToken: savedToken, refreshToken: null, user });
+      }
+    } catch {
+      // Ignore JSON parse or localStorage access errors
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -155,7 +158,7 @@ export function useAuth() {
     session,
     authError,
     setAuthError,
-    loading: false,
+    loading,
     login,
     register,
     guestLogin,
